@@ -32,10 +32,12 @@ const {
   buildStoreProducts,
   distanceKm,
   formatDistance,
+  resolveSheetSnap,
   selectNearestStores,
   toggleExpandedId,
   walkingMinutes,
 } = await vite.ssrLoadModule('/src/store-utils.js');
+const { createPickupFlowState, pickupFlowReducer } = await vite.ssrLoadModule('/src/pickup-flow.js');
 
 test('the app opens directly on the store screen', () => {
   const html = renderToStaticMarkup(React.createElement(App));
@@ -156,6 +158,65 @@ test('a marker stock number produces the same number of product rows', () => {
 test('a generated store product list exposes at most three AI PICK labels', () => {
   const rows = buildStoreProducts(PRODUCTS, 32);
   assert.equal(rows.filter((product) => product.badge === 'AI PICK').length, 3);
+});
+
+test('pickup flow skips 4-b and commits the selected store directly', () => {
+  const store = STORES[1];
+  const product = buildStoreProducts(PRODUCTS, store.stock)[0];
+  let state = createPickupFlowState();
+  state = pickupFlowReducer(state, { type: 'OPEN_STORE', store });
+  state = pickupFlowReducer(state, { type: 'OPEN_PICKUP', product });
+  state = pickupFlowReducer(state, { type: 'ADD_PICKUP_TO_CART' });
+
+  assert.equal(state.screen, '4');
+  assert.equal(state.overlay, 'added-toast');
+  assert.equal(state.cart[0].store.id, store.id);
+  assert.equal(state.cart[0].product.listKey, product.listKey);
+});
+
+test('pickup quantity is clamped to the remaining stock', () => {
+  const product = { ...PRODUCTS[0], stock: 3 };
+  let state = pickupFlowReducer(createPickupFlowState(), { type: 'OPEN_PICKUP', product });
+  state = pickupFlowReducer(state, { type: 'CHANGE_PICKUP_QTY', delta: 99 });
+  assert.equal(state.pickupDraft.qty, 3);
+  state = pickupFlowReducer(state, { type: 'CHANGE_PICKUP_QTY', delta: -99 });
+  assert.equal(state.pickupDraft.qty, 1);
+});
+
+test('pickup flow carries cart data through screens 5, 6, and 7', () => {
+  const store = STORES[0];
+  const product = buildStoreProducts(PRODUCTS, store.stock)[2];
+  let state = createPickupFlowState();
+  state = pickupFlowReducer(state, { type: 'OPEN_STORE', store });
+  state = pickupFlowReducer(state, { type: 'OPEN_PICKUP', product });
+  state = pickupFlowReducer(state, { type: 'ADD_PICKUP_TO_CART' });
+  state = pickupFlowReducer(state, { type: 'GO_TO_CART' });
+  assert.equal(state.screen, '6');
+  assert.equal(state.overlay, 'none');
+  state = pickupFlowReducer(state, { type: 'OPEN_BARCODE' });
+  assert.equal(state.overlay, 'barcode');
+  state = pickupFlowReducer(state, { type: 'CLOSE_OVERLAY' });
+  assert.equal(state.screen, '6');
+  assert.equal(state.overlay, 'none');
+  assert.equal(state.cart[0].store.id, store.id);
+});
+
+test('pickup flow supports product navigation and a full restart', () => {
+  let state = pickupFlowReducer(createPickupFlowState(), { type: 'OPEN_PRODUCT', productId: 'p1' });
+  assert.equal(state.screen, 'product');
+  assert.equal(state.productId, 'p1');
+  state = pickupFlowReducer(state, { type: 'NAVIGATE', screen: '3b' });
+  assert.equal(state.screen, '3b');
+  state = pickupFlowReducer(state, { type: 'RESTART' });
+  assert.deepEqual(state, createPickupFlowState());
+});
+
+test('sheet release snaps on distance or flick velocity', () => {
+  assert.equal(resolveSheetSnap('collapsed', -60, -0.1), 'expanded');
+  assert.equal(resolveSheetSnap('collapsed', -8, -0.6), 'expanded');
+  assert.equal(resolveSheetSnap('expanded', 60, 0.1), 'collapsed');
+  assert.equal(resolveSheetSnap('expanded', 8, 0.6), 'collapsed');
+  assert.equal(resolveSheetSnap('collapsed', -8, -0.1), 'collapsed');
 });
 
 test('the selected store sheet renders one row per marker stock number', () => {

@@ -60,3 +60,12 @@ export function toggleExpandedId(expandedIds, id) {
     ? expandedIds.filter((expandedId) => expandedId !== id)
     : [...expandedIds, id];
 }
+
+export function resolveSheetSnap(currentState, deltaY, velocityY) {
+  const distanceThreshold = 48;
+  const velocityThreshold = 0.45;
+
+  if (deltaY <= -distanceThreshold || velocityY <= -velocityThreshold) return 'expanded';
+  if (deltaY >= distanceThreshold || velocityY >= velocityThreshold) return 'collapsed';
+  return currentState;
+}
