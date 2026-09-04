@@ -1,53 +1,95 @@
 import BottomNav from './BottomNav.jsx';
-import { PRODUCTS, won, MAIN_STORE } from '../data.js';
+import { PRODUCTS, STORES, won, MAIN_STORE } from '../data.js';
+import {
+  FIXED_LOCATION,
+  distanceKm,
+  formatDistance,
+  selectNearestStores,
+  walkingMinutes,
+} from '../store-utils.js';
 
 export function StoreHome({ onNav }) {
-  const p = PRODUCTS[0];
+  const nearbyStores = selectNearestStores(STORES, FIXED_LOCATION, 2);
+  const nearestStore = nearbyStores[0];
+  const nearestDistance = distanceKm(FIXED_LOCATION, nearestStore);
+  const recommendations = [
+    { label: '10일 전 장바구니에 담았어요', product: PRODUCTS[0] },
+    { label: '2개월 전 구매했던 제품이에요', product: PRODUCTS[2] },
+  ];
+
   return (
     <section className="screen active" id="screen-2">
       <div className="screen-body">
-        <div className="topbar" style={{ justifyContent: 'flex-start', paddingLeft: 16 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 800 }}>올영매장</h1>
-        </div>
-        <div className="qm-row">
-          <div className="qm"><div className="ic"><img src="/icons/qm-store.png" alt="" /></div>매장찾기</div>
-          <button type="button" className="qm hi" onClick={() => onNav('3b')}><span className="ic"><img src="/icons/qm-clover.png" alt="" /></span>올클맵</button>
-          <div className="qm"><div className="ic"><img src="/icons/qm-map.png" alt="" /></div>매장재고</div>
-          <div className="qm"><div className="ic"><img src="/icons/qm-stock.png" alt="" /></div>쿠폰/증정</div>
-          <div className="qm"><div className="ic"><img src="/icons/qm-coupon.png" alt="" /></div>스킨스캔</div>
-          <div className="qm"><div className="ic"><img src="/icons/qm-skin.png" alt="" /></div>올영명소</div>
-        </div>
-        <div className="reco-title">정열창님,<br />도보 <b>12</b>분 거리에서 득템해보세요!</div>
-        <div className="reco-map"><div className="pin">올리브영 명동 타운</div></div>
-        <div className="reco-item">
-          <div className="lbl">10일 전 장바구니에 담았어요</div>
-          <div className="row">
-            <img className="prod" src={p.img} alt="" />
-            <div>
-              <div className="name">{p.name} <span className="sub">{p.variant}</span><span className="stock">잔여 재고 1개</span></div>
-              <div className="crewtalk"><b>크루TALK</b><span>매장에서 제일 인기많은 제품인데 클리어런스로 풀렸네요~~ 얼른 겟해가세용!</span></div>
+        <header className="store-home-header">
+          <h1>올영매장</h1>
+          <div className="store-header-actions">
+            <button type="button" aria-label="매장 검색"><img src="/icons/store-search.svg" alt="" /></button>
+            <button type="button" aria-label="장바구니"><img src="/icons/store-bag.png" alt="" /></button>
+          </div>
+        </header>
+
+        <section className="store-quick-section" aria-label="매장 바로가기">
+          <div className="qm-row">
+            <div className="qm"><div className="ic"><img src="/icons/qm-store.png" alt="" /></div>매장찾기</div>
+            <button type="button" className="qm hi" onClick={() => onNav('3b')}><span className="ic"><img src="/icons/qm-clover.png" alt="" /></span>올클맵</button>
+            <div className="qm"><div className="ic"><img src="/icons/qm-map.png" alt="" /></div>매장재고</div>
+            <div className="qm"><div className="ic"><img src="/icons/qm-stock.png" alt="" /></div>쿠폰/증정</div>
+            <div className="qm"><div className="ic"><img src="/icons/qm-coupon.png" alt="" /></div>스킨스캔</div>
+            <div className="qm"><div className="ic"><img src="/icons/qm-skin.png" alt="" /></div>올영명소</div>
+          </div>
+        </section>
+
+        <section className="store-recommendations">
+          <h2 className="reco-title">정열창님,<br />도보 <b>{walkingMinutes(nearestDistance)}</b>분 거리에서 득템해보세요!</h2>
+          <span className="sr-only">{FIXED_LOCATION.address}</span>
+          <div className="reco-map" aria-label={`${FIXED_LOCATION.address} 기준 ${nearestStore.name}`}>
+            <div className="pin">
+              {nearestStore.name}
+              <span className="pin-stock">{nearestStore.stock}</span>
             </div>
           </div>
-        </div>
-        <div className="store-benefit-hd"><h2>올리브영 매장 혜택</h2><span className="sort">가까운순 <img src="/icons/store-chevron.svg" alt="" /></span></div>
-        <div className="store-card">
-          <img className="thumb" src="/photos/store-hero.png" alt="" />
-          <div>
-            <span className="name">올리브영 명동 타운<span className="dist">0.6km</span></span>
-            <div className="addr">서울특별시 중구 명동길 53 1~2층</div>
-            <div className="hours">영업 중 · 10:00 ~ 22:30</div>
-            <div className="badges"><span>쿠폰/증정</span><span>픽업</span><span>스마트 반품</span></div>
+
+          <div className="reco-list">
+            {recommendations.map(({ label, product }) => (
+              <article className="reco-item" key={product.id}>
+                <div className="lbl">{label}</div>
+                <div className="row">
+                  <img className="prod" src={product.img} alt="" />
+                  <div className="reco-product-info">
+                    <div className="name">{product.name}</div>
+                    <div className="reco-meta"><span className="sub">{product.variant}</span><span className="stock">잔여 재고 {product.stock}개</span></div>
+                    {product.talk && <div className="crewtalk"><b>크루TALK</b><span>{product.talk}</span></div>}
+                  </div>
+                </div>
+              </article>
+            ))}
           </div>
-        </div>
-        <div className="store-card">
-          <img className="thumb" src="/photos/store-hero.png" alt="" />
-          <div>
-            <span className="name">올리브영 충무로역점<span className="dist">0.3km</span></span>
-            <div className="addr">서울특별시 중구 퇴계로 222</div>
-            <div className="hours">영업 중 · 10:00 ~ 22:00</div>
-            <div className="badges"><span>쿠폰/증정</span><span>픽업</span></div>
+        </section>
+
+        <section className="store-benefits">
+          <div className="store-benefit-hd">
+            <h2>올리브영 매장 혜택 <img src="/icons/store-union.svg" alt="" /></h2>
+            <span className="sort">가까운순 <img src="/icons/store-arrow.svg" alt="" /></span>
           </div>
-        </div>
+          {nearbyStores.map((store, index) => (
+            <article className="store-benefit-block" key={store.id}>
+              <div className="store-card" data-store-benefit="true">
+                <img className="thumb" src="/photos/store-hero.png" alt="" />
+                <div className="store-card-info">
+                  <div className="name">{store.name}<span className="dist">{formatDistance(distanceKm(FIXED_LOCATION, store))}</span></div>
+                  <div className="addr">{store.addr}</div>
+                  <div className="hours"><strong>영업 중</strong> · 10:00 ~ {index === 0 ? '22:00' : '22:30'}</div>
+                  <div className="badges"><span className="benefit">쿠폰/증정</span><span>픽업</span>{index === 0 && <span>스마트 반품</span>}</div>
+                </div>
+              </div>
+              <div className="store-gift-notice">
+                <span className="gift-label">증정</span>
+                <span className="gift-copy">올리브영 리유저블백</span>
+                <img src="/icons/store-arrow.svg" alt="" />
+              </div>
+            </article>
+          ))}
+        </section>
       </div>
       <BottomNav active="store" onNav={onNav} />
     </section>

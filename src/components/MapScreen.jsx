@@ -2,10 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { STORES, PRODUCTS, won } from '../data.js';
+import { FIXED_LOCATION, buildStoreProducts, selectNearestStores } from '../store-utils.js';
 import BottomNav from './BottomNav.jsx';
 
-const CENTER = { lat: 37.5605, lng: 126.9948 }; // 충무로 필동로 26 기준
+export { selectNearestStores } from '../store-utils.js';
+
+const CENTER = FIXED_LOCATION;
 const STORE_LIMIT = 10;
+const SELECTED_MARKER_GAP = 80;
 const MAP_BOUNDS = [[126.965, 37.545], [127.02, 37.58]];
 const MAP_STYLE = {
   version: 8,
@@ -35,18 +39,6 @@ const MAP_STYLE = {
   ],
 };
 
-function squaredDistance(a, b) {
-  const lat = a.lat - b.lat;
-  const lng = a.lng - b.lng;
-  return lat * lat + lng * lng;
-}
-
-export function selectNearestStores(stores, center, limit = STORE_LIMIT) {
-  return [...stores]
-    .sort((a, b) => squaredDistance(a, center) - squaredDistance(b, center))
-    .slice(0, limit);
-}
-
 export function getStoreBounds(stores) {
   return stores.reduce(
     (bounds, store) => [
@@ -55,6 +47,20 @@ export function getStoreBounds(stores) {
     ],
     [[Infinity, Infinity], [-Infinity, -Infinity]],
   );
+}
+
+export function getSelectedMarkerOffset(mapHeight, sheetHeight) {
+  const desiredMarkerY = mapHeight - sheetHeight - SELECTED_MARKER_GAP;
+  return [0, Math.round(desiredMarkerY - mapHeight / 2)];
+}
+
+export function getSelectedCameraOptions(store, mapHeight, sheetHeight) {
+  return {
+    center: [store.lng, store.lat],
+    offset: getSelectedMarkerOffset(mapHeight, sheetHeight),
+    zoom: 15.5,
+    duration: 450,
+  };
 }
 
 function makePinElement(store, selected, onClick) {
@@ -79,11 +85,60 @@ function makePinElement(store, selected, onClick) {
   return marker;
 }
 
+export function StoreSheet({ store, sheetState, onToggle, onOpenProduct, sheetRef }) {
+  const storeProducts = buildStoreProducts(PRODUCTS, store.stock);
+
+  return (
+    <div className={'sheet show ' + sheetState} ref={sheetRef}>
+      <button type="button" className="sheet-head" onClick={onToggle}>
+        <span className="sheet-handle" />
+        <span className="store-title">
+          {store.name} <img src="/icons/map-link.svg" alt="" />
+        </span>
+      </button>
+      <div className="sheet-notice">
+        <div className="sheet-notice-card">
+          <img className="notice-icon" src="/icons/notice-bell.svg" alt="" />
+          <span className="notice-copy">[입고알림] 라스트픽 온라인 입고 완료되었습니다.</span>
+          <span className="notice-time">12분 전</span>
+          <img className="notice-link" src="/icons/map-link.svg" alt="" />
+        </div>
+      </div>
+      <div className="sheet-body">
+        {storeProducts.map((product) => (
+          <div className="crew-item" key={product.listKey}>
+            <div className="row">
+              <button type="button" className="product-thumb" onClick={() => onOpenProduct(product.id)}>
+                <img className="prod" src={product.img} alt="" />
+              </button>
+              <div className="info">
+                <button type="button" className="nm" onClick={() => onOpenProduct(product.id)}>{product.name}</button>
+                <div className="subrow">
+                  <span className="variant">{product.variant}</span>
+                  {product.badge && <span className="badge-ai">{product.badge}</span>}
+                  {product.badge2 && <span className="badge-gray">{product.badge2}</span>}
+                </div>
+                <div className="price-row">
+                  <span className="stock">잔여 재고 | {product.stock}개</span>
+                  <span className="now"><span className="pct">{product.pct}%</span>{won(product.price)}</span>
+                </div>
+              </div>
+            </div>
+            {product.talk && <div className="talk"><b>크루TALK</b><span>{product.talk}</span></div>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function MapScreen({ onNav, onOpenProduct }) {
   const mapDivRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef([]);
+  const sheetRef = useRef(null);
   const selectStoreRef = useRef(() => {});
+  const closeSelectedStoreRef = useRef(() => {});
   const [visibleStores, setVisibleStores] = useState(() => selectNearestStores(STORES, CENTER));
   const [showAiBanner, setShowAiBanner] = useState(true);
   const [showSearchButton, setShowSearchButton] = useState(true);
@@ -107,6 +162,7 @@ export default function MapScreen({ onNav, onOpenProduct }) {
 
     map.on('dragstart', () => setShowSearchButton(true));
     map.on('zoomstart', () => setShowSearchButton(true));
+    map.on('click', () => closeSelectedStoreRef.current());
     map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
     map.fitBounds(getStoreBounds(selectNearestStores(STORES, CENTER)), {
       padding: { top: 140, right: 24, bottom: 90, left: 24 },
@@ -127,13 +183,14 @@ export default function MapScreen({ onNav, onOpenProduct }) {
     setSelectedId(id);
     setShowAiBanner(false);
     setSheetState('collapsed');
-
-    const store = STORES.find((item) => item.id === id);
-    if (store && mapRef.current) {
-      mapRef.current.easeTo({ center: [store.lng, store.lat], duration: 450 });
-    }
   }
   selectStoreRef.current = selectStore;
+
+  function closeSelectedStore() {
+    setSelectedId(null);
+    setSheetState('closed');
+  }
+  closeSelectedStoreRef.current = closeSelectedStore;
 
   useEffect(() => {
     const map = mapRef.current;
@@ -157,6 +214,22 @@ export default function MapScreen({ onNav, onOpenProduct }) {
     };
   }, [visibleStores, selectedId]);
 
+  const selectedStore = STORES.find((store) => store.id === selectedId);
+
+  useEffect(() => {
+    if (!selectedStore || !mapRef.current) return undefined;
+
+    const animationFrame = requestAnimationFrame(() => {
+      const map = mapRef.current;
+      if (!map) return;
+      const mapHeight = map.getContainer().clientHeight;
+      const sheetHeight = sheetRef.current?.offsetHeight ?? 400;
+      map.easeTo(getSelectedCameraOptions(selectedStore, mapHeight, sheetHeight));
+    });
+
+    return () => cancelAnimationFrame(animationFrame);
+  }, [selectedStore]);
+
   function searchThisArea() {
     const center = mapRef.current?.getCenter();
     if (center) {
@@ -167,14 +240,12 @@ export default function MapScreen({ onNav, onOpenProduct }) {
     setShowSearchButton(false);
   }
 
-  const selectedStore = STORES.find((store) => store.id === selectedId);
-
   return (
     <section className="screen active" id="screen-3b">
       <div className="map-wrap">
         <div className="map-canvas">
           <div id="maplibre-map" ref={mapDivRef} aria-label="충무로 주변 올리브영 실제 지도" />
-          {showAiBanner && <img className="map-dim-art" src="/icons/map-dim-screen.svg" alt="" />}
+          {(showAiBanner || selectedStore) && <img className="map-dim-art" src="/icons/map-dim-screen.svg" alt="" />}
         </div>
 
         <div className="map-topbar">
@@ -206,49 +277,13 @@ export default function MapScreen({ onNav, onOpenProduct }) {
           </button>
         )}
 
-        {selectedStore && (
-          <div className={'sheet show ' + sheetState}>
-            <button
-              type="button"
-              className="sheet-head"
-              onClick={() => setSheetState(sheetState === 'collapsed' ? 'expanded' : 'collapsed')}
-            >
-              <span className="sheet-handle" />
-              <span className="store-title">
-                {selectedStore.name} <img src="/icons/map-link.svg" alt="" />
-              </span>
-            </button>
-            <div className="sheet-notice">
-              <img src="/icons/notice-bell.svg" alt="" style={{ width: 13, height: 11 }} />
-              [입고알림] 라스트픽 온라인 입고 완료되었습니다.
-              <span style={{ opacity: 0.4, marginLeft: 'auto' }}>12분 전 ›</span>
-            </div>
-            <div className="sheet-body">
-              {PRODUCTS.map((product) => (
-                <div className="crew-item" key={product.id}>
-                  <div className="row">
-                    <button type="button" className="product-thumb" onClick={() => onOpenProduct(product.id)}>
-                      <img className="prod" src={product.img} alt="" />
-                    </button>
-                    <div className="info">
-                      <button type="button" className="nm" onClick={() => onOpenProduct(product.id)}>{product.name}</button>
-                      <div className="subrow">
-                        <span className="variant">{product.variant}</span>
-                        {product.badge && <span className="badge-ai">{product.badge}</span>}
-                        {product.badge2 && <span className="badge-gray">{product.badge2}</span>}
-                      </div>
-                      <div className="price-row">
-                        <span className="stock">잔여 재고 | {product.stock}개</span>
-                        <span className="now"><span className="pct">{product.pct}%</span>{won(product.price)}</span>
-                      </div>
-                    </div>
-                  </div>
-                  {product.talk && <div className="talk"><b>크루TALK</b><span>{product.talk}</span></div>}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {selectedStore && <StoreSheet
+          store={selectedStore}
+          sheetState={sheetState}
+          sheetRef={sheetRef}
+          onToggle={() => setSheetState(sheetState === 'collapsed' ? 'expanded' : 'collapsed')}
+          onOpenProduct={onOpenProduct}
+        />}
       </div>
       <BottomNav active="store" onNav={onNav} />
     </section>
