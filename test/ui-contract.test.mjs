@@ -79,6 +79,15 @@ test('the store home renders the missing Figma sections around the fixed locatio
   assert.match(html, /0\.2km/);
 });
 
+test('the All-C-Map quick tile uses the clover artwork and recommendation copy is grouped as notes', () => {
+  const html = renderToStaticMarkup(
+    React.createElement(StoreHome, { onNav() {} }),
+  );
+
+  assert.match(html, /<button[^>]*aria-label="올클맵 열기"[^>]*>.*src="\/icons\/qm-clover\.png"/s);
+  assert.equal((html.match(/role="note"/g) ?? []).length, 2);
+});
+
 test('the map uses a live map surface and the exact Figma dim layer', () => {
   const html = renderToStaticMarkup(
     React.createElement(MapScreen, { onNav() {}, onOpenProduct() {} }),

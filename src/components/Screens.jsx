@@ -31,7 +31,7 @@ export function StoreHome({ onNav }) {
         <section className="store-quick-section" aria-label="매장 바로가기">
           <div className="qm-row">
             <div className="qm"><div className="ic"><img src="/icons/qm-store.png" alt="" /></div>매장찾기</div>
-            <button type="button" className="qm hi" onClick={() => onNav('3b')}><span className="ic"><img src="/icons/qm-clover.png" alt="" /></span>올클맵</button>
+            <button type="button" className="qm hi" aria-label="올클맵 열기" onClick={() => onNav('3b')}><span className="ic"><img src="/icons/qm-clover.png" alt="" /></span><span className="qm-label">올클맵</span></button>
             <div className="qm"><div className="ic"><img src="/icons/qm-map.png" alt="" /></div>매장재고</div>
             <div className="qm"><div className="ic"><img src="/icons/qm-stock.png" alt="" /></div>쿠폰/증정</div>
             <div className="qm"><div className="ic"><img src="/icons/qm-coupon.png" alt="" /></div>스킨스캔</div>
@@ -58,7 +58,7 @@ export function StoreHome({ onNav }) {
                   <div className="reco-product-info">
                     <div className="name">{product.name}</div>
                     <div className="reco-meta"><span className="sub">{product.variant}</span><span className="stock">잔여 재고 {product.stock}개</span></div>
-                    {product.talk && <div className="crewtalk"><b>크루TALK</b><span>{product.talk}</span></div>}
+                    {product.talk && <div className="crewtalk" role="note"><b>크루TALK</b><span className="crewtalk-copy">{product.talk}</span></div>}
                   </div>
                 </div>
               </article>
