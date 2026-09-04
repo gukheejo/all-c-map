@@ -130,13 +130,13 @@ export function ProductPlaceholder({ product, onNav }) {
   );
 }
 
-export function StoreDetail({ onNav, onOrder, toastShown, onGoCart }) {
+export function StoreDetail({ store = MAIN_STORE, onNav, onOrder, toastShown, onGoCart }) {
   return (
     <section className="screen active" id="screen-4">
       <div className="screen-body">
         <div className="topbar">
           <button className="back" onClick={() => onNav('3b')}><img src="/icons/detail-back.svg" alt="back" /></button>
-          <h1>올리브영 명동 타운</h1>
+          <h1>{store.name}</h1>
         </div>
         <div className="store-hero-wrap">
           <img src="/photos/store-hero.png" alt="" />
@@ -145,10 +145,10 @@ export function StoreDetail({ onNav, onOrder, toastShown, onGoCart }) {
         <div className="store-info">
           <div className="lang"><img src="/icons/detail-lang.png" alt="" />한국어</div>
           <div className="name-row">
-            <h2>올리브영 명동 타운</h2>
+            <h2>{store.name}</h2>
             <div className="acts"><img src="/icons/detail-star.svg" alt="" /><img src="/icons/detail-dots.svg" alt="" /></div>
           </div>
-          <div className="en">OLIVE YOUNG MYEONGDONG GLOBAL</div>
+          <div className="en">{store.englishName ?? store.addr}</div>
         </div>
         <div className="store-actions"><button className="btn-outline">매장 상품 보기</button><button className="btn-outline">매장 소식</button></div>
         <div className="store-tabs"><span>기본 정보</span><span>매장행사</span><span>인기 상품</span><span className="active">클리어런스</span></div>
@@ -189,6 +189,7 @@ export function StoreDetail({ onNav, onOrder, toastShown, onGoCart }) {
 export function Cart({ onNav, cart, onQtyChange, onPurchase }) {
   const origSum = cart.reduce((s, e) => s + e.product.orig * e.qty, 0);
   const totalSum = cart.reduce((s, e) => s + e.product.price * e.qty, 0);
+  const pickupStore = cart[0]?.store ?? MAIN_STORE;
   return (
     <section className="screen active" id="screen-6">
       <div className="screen-body">
@@ -223,7 +224,7 @@ export function Cart({ onNav, cart, onQtyChange, onPurchase }) {
           <span className="note" style={{ marginLeft: 'auto' }}>실제 재고는 상이할 수 있습니다</span>
         </div>
         <div className="cart-store-select">
-          <div className="lft">픽업 매장 › <b>{MAIN_STORE.name}</b></div>
+          <div className="lft">픽업 매장 › <b>{pickupStore.name}</b></div>
           <div className="chg">매장변경</div>
         </div>
         <div>

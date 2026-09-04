@@ -85,17 +85,25 @@ function makePinElement(store, selected, onClick) {
   return marker;
 }
 
-export function StoreSheet({ store, sheetState, onToggle, onOpenProduct, sheetRef }) {
+export function StoreSheet({ store, sheetState, onToggle, onOpenStore, onOpenProduct, sheetRef }) {
   const storeProducts = buildStoreProducts(PRODUCTS, store.stock);
 
   return (
     <div className={'sheet show ' + sheetState} ref={sheetRef}>
-      <button type="button" className="sheet-head" onClick={onToggle}>
-        <span className="sheet-handle" />
-        <span className="store-title">
+      <div className="sheet-head">
+        <button
+          type="button"
+          className="sheet-toggle"
+          onClick={onToggle}
+          aria-expanded={sheetState === 'expanded'}
+          aria-label={sheetState === 'expanded' ? '바텀시트 접기' : '바텀시트 펼치기'}
+        >
+          <span className="sheet-handle" />
+        </button>
+        <button type="button" className="store-title" onClick={() => onOpenStore(store)} aria-label={`${store.name} 상세 보기`}>
           {store.name} <img src="/icons/map-link.svg" alt="" />
-        </span>
-      </button>
+        </button>
+      </div>
       <div className="sheet-notice">
         <div className="sheet-notice-card">
           <img className="notice-icon" src="/icons/notice-bell.svg" alt="" />
@@ -132,7 +140,7 @@ export function StoreSheet({ store, sheetState, onToggle, onOpenProduct, sheetRe
   );
 }
 
-export default function MapScreen({ onNav, onOpenProduct }) {
+export default function MapScreen({ onNav, onOpenProduct, onOpenStore }) {
   const mapDivRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef([]);
@@ -282,6 +290,7 @@ export default function MapScreen({ onNav, onOpenProduct }) {
           sheetState={sheetState}
           sheetRef={sheetRef}
           onToggle={() => setSheetState(sheetState === 'collapsed' ? 'expanded' : 'collapsed')}
+          onOpenStore={onOpenStore}
           onOpenProduct={onOpenProduct}
         />}
       </div>

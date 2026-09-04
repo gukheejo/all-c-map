@@ -1,5 +1,6 @@
 export const MAIN_STORE = {
   name: '올리브영 명동 타운',
+  englishName: 'OLIVE YOUNG MYEONGDONG GLOBAL',
   addr: '서울특별시 중구 명동길 53 1~2층',
   tel: '1577-4887',
   lat: 37.5641193,
@@ -7,7 +8,7 @@ export const MAIN_STORE = {
 };
 
 export const STORES = [
-  { id: 'town', name: '올리브영 명동 타운', addr: '서울특별시 중구 명동길 53 1~2층', lat: 37.5641193, lng: 126.9851661, stock: 32, ai: true },
+  { id: 'town', name: '올리브영 명동 타운', englishName: 'OLIVE YOUNG MYEONGDONG GLOBAL', addr: '서울특별시 중구 명동길 53 1~2층', lat: 37.5641193, lng: 126.9851661, stock: 32, ai: true },
   { id: 'chungmuro', name: '올리브영 충무로역점', addr: '서울특별시 중구 퇴계로 222 (필동2가)', lat: 37.5615827, lng: 126.9962525, stock: 7, ai: true },
   { id: 'jungang', name: '올리브영 명동중앙점', addr: '서울특별시 중구 명동8나길 18', lat: 37.561567, lng: 126.984003, stock: 12 },
   { id: 'daero', name: '올리브영 명동대로점', addr: '서울특별시 중구 퇴계로 120', lat: 37.5606047, lng: 126.9850862, stock: 14 },
