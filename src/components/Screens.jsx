@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import BottomNav from './BottomNav.jsx';
 import { PRODUCTS, STORES, won, MAIN_STORE } from '../data.js';
 import {
@@ -5,10 +6,12 @@ import {
   distanceKm,
   formatDistance,
   selectNearestStores,
+  toggleExpandedId,
   walkingMinutes,
 } from '../store-utils.js';
 
 export function StoreHome({ onNav }) {
+  const [expandedTalkIds, setExpandedTalkIds] = useState([]);
   const nearbyStores = selectNearestStores(STORES, FIXED_LOCATION, 2);
   const nearestStore = nearbyStores[0];
   const nearestDistance = distanceKm(FIXED_LOCATION, nearestStore);
@@ -58,7 +61,17 @@ export function StoreHome({ onNav }) {
                   <div className="reco-product-info">
                     <div className="name">{product.name}</div>
                     <div className="reco-meta"><span className="sub">{product.variant}</span><span className="stock">잔여 재고 {product.stock}개</span></div>
-                    {product.talk && <div className="crewtalk" role="note"><b>크루TALK</b><span className="crewtalk-copy">{product.talk}</span></div>}
+                    {product.talk && (
+                      <button
+                        type="button"
+                        className={`crewtalk${expandedTalkIds.includes(product.id) ? ' expanded' : ''}`}
+                        aria-expanded={expandedTalkIds.includes(product.id)}
+                        aria-label={`크루TALK ${expandedTalkIds.includes(product.id) ? '접기' : '전체 내용 보기'}`}
+                        onClick={() => setExpandedTalkIds((current) => toggleExpandedId(current, product.id))}
+                      >
+                        <b>크루TALK</b><span className="crewtalk-copy">{product.talk}</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               </article>

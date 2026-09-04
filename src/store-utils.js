@@ -54,3 +54,9 @@ export function buildStoreProducts(products, count, aiLimit = 3) {
     };
   });
 }
+
+export function toggleExpandedId(expandedIds, id) {
+  return expandedIds.includes(id)
+    ? expandedIds.filter((expandedId) => expandedId !== id)
+    : [...expandedIds, id];
+}

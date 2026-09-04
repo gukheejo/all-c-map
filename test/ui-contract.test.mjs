@@ -33,6 +33,7 @@ const {
   distanceKm,
   formatDistance,
   selectNearestStores,
+  toggleExpandedId,
   walkingMinutes,
 } = await vite.ssrLoadModule('/src/store-utils.js');
 
@@ -79,13 +80,19 @@ test('the store home renders the missing Figma sections around the fixed locatio
   assert.match(html, /0\.2km/);
 });
 
-test('the All-C-Map quick tile uses the clover artwork and recommendation copy is grouped as notes', () => {
+test('the All-C-Map quick tile uses the clover artwork and recommendation copy starts collapsed', () => {
   const html = renderToStaticMarkup(
     React.createElement(StoreHome, { onNav() {} }),
   );
 
   assert.match(html, /<button[^>]*aria-label="올클맵 열기"[^>]*>.*src="\/icons\/qm-clover\.png"/s);
-  assert.equal((html.match(/role="note"/g) ?? []).length, 2);
+  assert.equal((html.match(/aria-expanded="false"/g) ?? []).length, 2);
+});
+
+test('a Crew Talk item toggles independently between collapsed and expanded', () => {
+  assert.deepEqual(toggleExpandedId([], 'p1'), ['p1']);
+  assert.deepEqual(toggleExpandedId(['p1', 'p3'], 'p1'), ['p3']);
+  assert.deepEqual(toggleExpandedId(['p1'], 'p3'), ['p1', 'p3']);
 });
 
 test('the map uses a live map surface and the exact Figma dim layer', () => {
