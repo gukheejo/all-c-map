@@ -25,8 +25,8 @@ const {
   getSelectedMarkerOffset,
   getStoreBounds,
 } = mapModule;
-const { StoreDetail, StoreHome } = await vite.ssrLoadModule('/src/components/Screens.jsx');
-const { PickupSheet } = await vite.ssrLoadModule('/src/components/Overlays.jsx');
+const { Cart, StoreDetail, StoreHome } = await vite.ssrLoadModule('/src/components/Screens.jsx');
+const { BarcodeCard, PickupSheet } = await vite.ssrLoadModule('/src/components/Overlays.jsx');
 const { STORES, PRODUCTS } = await vite.ssrLoadModule('/src/data.js');
 const {
   FIXED_LOCATION,
@@ -202,6 +202,19 @@ test('pickup flow carries cart data through screens 5, 6, and 7', () => {
   assert.equal(state.cart[0].store.id, store.id);
 });
 
+test('cart quantity changes stay within the selected product stock', () => {
+  const store = STORES[0];
+  const product = { ...PRODUCTS[0], stock: 3 };
+  let state = createPickupFlowState();
+  state = pickupFlowReducer(state, { type: 'OPEN_STORE', store });
+  state = pickupFlowReducer(state, { type: 'OPEN_PICKUP', product });
+  state = pickupFlowReducer(state, { type: 'ADD_PICKUP_TO_CART' });
+  state = pickupFlowReducer(state, { type: 'CHANGE_CART_QTY', index: 0, delta: 99 });
+  assert.equal(state.cart[0].qty, 3);
+  state = pickupFlowReducer(state, { type: 'CHANGE_CART_QTY', index: 0, delta: -99 });
+  assert.equal(state.cart[0].qty, 1);
+});
+
 test('pickup flow supports product navigation and a full restart', () => {
   let state = pickupFlowReducer(createPickupFlowState(), { type: 'OPEN_PRODUCT', productId: 'p1' });
   assert.equal(state.screen, 'product');
@@ -284,6 +297,38 @@ test('store detail and pickup sheet render the selected map store and identical 
   assert.equal((detail.match(/data-detail-product="true"/g) ?? []).length, store.stock);
   assert.match(sheet, /올리브영 충무로역점/);
   assert.match(sheet, /disabled=""/);
+});
+
+test('cart and barcode render the committed pickup store', () => {
+  const store = { ...STORES.find((item) => item.id === 'chungmuro'), tel: '02-0000-0000' };
+  const cart = [{ store, product: PRODUCTS[0], qty: 2 }];
+  const cartHtml = renderToStaticMarkup(React.createElement(Cart, {
+    onNav() {},
+    cart,
+    store,
+    onQtyChange() {},
+    onPurchase() {},
+  }));
+  const barcodeHtml = renderToStaticMarkup(React.createElement(BarcodeCard, {
+    store,
+    countdown: '5시간 57분 20초 이내',
+    onClose() {},
+    onRestart() {},
+  }));
+
+  assert.match(cartHtml, /올리브영 충무로역점/);
+  assert.match(barcodeHtml, /올리브영 충무로역점/);
+  assert.match(barcodeHtml, /서울특별시 중구 퇴계로 222/);
+  assert.match(barcodeHtml, /02-0000-0000/);
+});
+
+test('App wires the direct pickup flow without the removed 4-b dialog', async () => {
+  const source = await readFile(new URL('../src/App.jsx', import.meta.url), 'utf8');
+
+  assert.doesNotMatch(source, /ConfirmDialog|confirmOpen|keepExisting|switchStore/);
+  assert.match(source, /onOpenStore=/);
+  assert.match(source, /buildStoreProducts\(PRODUCTS, flow\.selectedStore\.stock\)/);
+  assert.match(source, /initialSelectedStoreId=/);
 });
 
 test('the selected marker offset places it above a responsive bottom sheet', () => {

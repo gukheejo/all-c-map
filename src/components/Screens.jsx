@@ -195,7 +195,7 @@ export function StoreDetail({
   );
 }
 
-export function Cart({ onNav, cart, onQtyChange, onPurchase }) {
+export function Cart({ onNav, cart, store = MAIN_STORE, onQtyChange, onPurchase }) {
   const origSum = cart.reduce((s, e) => s + e.product.orig * e.qty, 0);
   const totalSum = cart.reduce((s, e) => s + e.product.price * e.qty, 0);
   return (
@@ -232,7 +232,7 @@ export function Cart({ onNav, cart, onQtyChange, onPurchase }) {
           <span className="note" style={{ marginLeft: 'auto' }}>실제 재고는 상이할 수 있습니다</span>
         </div>
         <div className="cart-store-select">
-          <div className="lft">픽업 매장 › <b>{MAIN_STORE.name}</b></div>
+          <div className="lft">픽업 매장 › <b>{store.name}</b></div>
           <div className="chg">매장변경</div>
         </div>
         <div>
@@ -252,9 +252,9 @@ export function Cart({ onNav, cart, onQtyChange, onPurchase }) {
               <div className="optionbox">{entry.product.variant} <img src="/icons/cart-chevron.svg" alt="" /></div>
               <div className="qtyrow2">
                 <div className="qty-stepper">
-                  <button onClick={() => onQtyChange(idx, -1)}><img src="/icons/cart-minus.svg" alt="-" /></button>
+                  <button onClick={() => onQtyChange(idx, -1)} disabled={entry.qty <= 1}><img src="/icons/cart-minus.svg" alt="-" /></button>
                   <span className="val">{entry.qty}</span>
-                  <button onClick={() => onQtyChange(idx, 1)}><img src="/icons/cart-plus.svg" alt="+" /></button>
+                  <button onClick={() => onQtyChange(idx, 1)} disabled={entry.qty >= entry.product.stock}><img src="/icons/cart-plus.svg" alt="+" /></button>
                 </div>
                 <div className="price">
                   <span style={{ textDecoration: 'line-through', color: '#666', fontSize: 12 }}>{won(entry.product.orig)}</span>{' '}

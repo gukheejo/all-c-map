@@ -42,6 +42,15 @@ export function pickupFlowReducer(state, action) {
       };
     case 'GO_TO_CART':
       return { ...state, screen: '6', overlay: 'none', pickupDraft: null };
+    case 'CHANGE_CART_QTY':
+      return {
+        ...state,
+        cart: state.cart.map((entry, index) => {
+          if (index !== action.index) return entry;
+          const qty = Math.min(entry.product.stock, Math.max(1, entry.qty + action.delta));
+          return { ...entry, qty };
+        }),
+      };
     case 'OPEN_BARCODE':
       return { ...state, overlay: 'barcode' };
     case 'CLOSE_OVERLAY':

@@ -38,21 +38,7 @@ export function PickupSheet({ store = MAIN_STORE, product, qty, onMinus, onPlus,
   );
 }
 
-export function ConfirmDialog({ onKeep, onSwitch }) {
-  return (
-    <div className="confirm-card">
-      <h3>선택한 매장에서 픽업하시겠어요?</h3>
-      <p>픽업 장바구니에 다른 매장이 지정되어 있어요.<br />방금 선택한 매장에서 픽업하시겠어요?</p>
-      <div className="store-pill">{MAIN_STORE.name}</div>
-      <div className="actions">
-        <button className="keep" onClick={onKeep}>기존 매장 유지</button>
-        <button className="switch" onClick={onSwitch}>이 매장 픽업</button>
-      </div>
-    </div>
-  );
-}
-
-export function BarcodeCard({ countdown, onClose, onRestart }) {
+export function BarcodeCard({ store = MAIN_STORE, countdown, onClose, onRestart }) {
   return (
     <div className="barcode-card">
       <div className="hd">
@@ -72,9 +58,9 @@ export function BarcodeCard({ countdown, onClose, onRestart }) {
         <div className="num">1227121230310260821228</div>
       </div>
       <div className="storeinfo">
-        <div className="nm">{MAIN_STORE.name}</div>
-        <div className="addr">{MAIN_STORE.addr}</div>
-        <div className="tel">☎ {MAIN_STORE.tel}</div>
+        <div className="nm">{store.name}</div>
+        <div className="addr">{store.addr}</div>
+        <div className="tel">☎ {store.tel ?? '1577-4887'}</div>
         <div className="fans">1,105명이 관심매장으로 등록했습니다.</div>
       </div>
       <div className="close-btn" onClick={onRestart}>처음부터 다시 보기</div>

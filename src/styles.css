@@ -279,15 +279,6 @@ a{color:inherit;text-decoration:none}
 .pickup-sheet .summary .total{font-size:16px;font-weight:700}
 .pickup-sheet .cta{border-top:1px solid #f3f4f6;padding:17px 20px}
 
-.confirm-card{position:absolute;left:24px;right:24px;top:50%;transform:translateY(-50%);background:#fff;border-radius:10px;padding:20px;z-index:850;box-shadow:0 25px 25px rgba(0,0,0,.3)}
-.confirm-card h3{font-size:17px;font-weight:700}
-.confirm-card p{font-size:14px;color:#222;margin-top:8px;line-height:1.4}
-.confirm-card .store-pill{background:#f3f4f6;border-radius:12px;padding:14px;text-align:center;font-weight:700;font-size:15px;margin-top:16px}
-.confirm-card .actions{display:flex;gap:12px;margin-top:16px}
-.confirm-card .actions button{flex:1;height:52px;border-radius:10px;font-size:15px;font-weight:700}
-.confirm-card .actions .keep{border:1px solid #e6e6e6;color:#666}
-.confirm-card .actions .switch{background:#222;color:#fff}
-
 /* ---------- cart screen ---------- */
 .cart-topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 16px 10px}
 .cart-topbar h1{font-size:17px;font-weight:700}
