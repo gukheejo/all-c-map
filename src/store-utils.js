@@ -60,3 +60,14 @@ export function toggleExpandedId(expandedIds, id) {
     ? expandedIds.filter((expandedId) => expandedId !== id)
     : [...expandedIds, id];
 }
+
+export function filterCrewTalkItems(items, query) {
+  const normalizedQuery = query.trim().toLocaleLowerCase('ko-KR');
+  if (!normalizedQuery) return items;
+
+  return items.filter(({ product, store }) => (
+    `${product.name} ${product.variant} ${store.name}`
+      .toLocaleLowerCase('ko-KR')
+      .includes(normalizedQuery)
+  ));
+}
