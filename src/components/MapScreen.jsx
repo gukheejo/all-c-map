@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { STORES, PRODUCTS, won } from '../data.js';
-import { FIXED_LOCATION, buildStoreProducts, selectNearestStores } from '../store-utils.js';
+import { FIXED_LOCATION, buildStoreProducts, resolveSheetSnap, selectNearestStores } from '../store-utils.js';
 import BottomNav from './BottomNav.jsx';
 
 export { selectNearestStores } from '../store-utils.js';
@@ -85,17 +85,85 @@ function makePinElement(store, selected, onClick) {
   return marker;
 }
 
-export function StoreSheet({ store, sheetState, onToggle, onOpenProduct, sheetRef }) {
+export function StoreSheet({ store, sheetState, onToggle, onOpenProduct, onOpenStore, sheetRef }) {
   const storeProducts = buildStoreProducts(PRODUCTS, store.stock);
+  const dragRef = useRef(null);
+  const [dragHeight, setDragHeight] = useState(null);
+  const [dragging, setDragging] = useState(false);
+
+  function toggleSheet() {
+    onToggle(sheetState === 'collapsed' ? 'expanded' : 'collapsed');
+  }
+
+  function handlePointerDown(event) {
+    if (event.button !== undefined && event.button !== 0) return;
+    const sheet = sheetRef?.current;
+    if (!sheet) return;
+    const stageHeight = sheet.parentElement?.clientHeight ?? window.innerHeight;
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startY: event.clientY,
+      startTime: performance.now(),
+      startHeight: sheet.getBoundingClientRect().height,
+      minHeight: Math.min(400, Math.max(300, stageHeight * 0.5)),
+      maxHeight: Math.max(300, stageHeight - 57),
+    };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    setDragging(true);
+  }
+
+  function handlePointerMove(event) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const deltaY = event.clientY - drag.startY;
+    setDragHeight(Math.min(drag.maxHeight, Math.max(drag.minHeight, drag.startHeight - deltaY)));
+  }
+
+  function finishDrag(event) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const deltaY = event.clientY - drag.startY;
+    const elapsed = Math.max(1, performance.now() - drag.startTime);
+    const velocityY = deltaY / elapsed;
+    const wasTap = Math.abs(deltaY) < 6;
+    dragRef.current = null;
+    setDragging(false);
+    setDragHeight(null);
+    if (wasTap) toggleSheet();
+    else onToggle(resolveSheetSnap(sheetState, deltaY, velocityY));
+  }
 
   return (
-    <div className={'sheet show ' + sheetState} ref={sheetRef}>
-      <button type="button" className="sheet-head" onClick={onToggle}>
+    <div
+      className={'sheet show ' + sheetState + (dragging ? ' dragging' : '')}
+      ref={sheetRef}
+      style={dragHeight == null ? undefined : { height: `${dragHeight}px` }}
+    >
+      <div
+        className="sheet-head"
+        data-sheet-drag-region="true"
+        role="button"
+        tabIndex="0"
+        aria-label={sheetState === 'collapsed' ? '매장 상품 목록 펼치기' : '매장 상품 목록 접기'}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') toggleSheet();
+        }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={finishDrag}
+        onPointerCancel={finishDrag}
+      >
         <span className="sheet-handle" />
-        <span className="store-title">
+        <button
+          type="button"
+          className="store-title"
+          aria-label={`${store.name} 상세 보기`}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={() => onOpenStore(store)}
+        >
           {store.name} <img src="/icons/map-link.svg" alt="" />
-        </span>
-      </button>
+        </button>
+      </div>
       <div className="sheet-notice">
         <div className="sheet-notice-card">
           <img className="notice-icon" src="/icons/notice-bell.svg" alt="" />
@@ -132,7 +200,7 @@ export function StoreSheet({ store, sheetState, onToggle, onOpenProduct, sheetRe
   );
 }
 
-export default function MapScreen({ onNav, onOpenProduct }) {
+export default function MapScreen({ onNav, onOpenProduct, onOpenStore, initialSelectedStoreId = null }) {
   const mapDivRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef([]);
@@ -142,8 +210,8 @@ export default function MapScreen({ onNav, onOpenProduct }) {
   const [visibleStores, setVisibleStores] = useState(() => selectNearestStores(STORES, CENTER));
   const [showAiBanner, setShowAiBanner] = useState(true);
   const [showSearchButton, setShowSearchButton] = useState(true);
-  const [selectedId, setSelectedId] = useState(null);
-  const [sheetState, setSheetState] = useState('closed');
+  const [selectedId, setSelectedId] = useState(initialSelectedStoreId);
+  const [sheetState, setSheetState] = useState(initialSelectedStoreId ? 'collapsed' : 'closed');
 
   useEffect(() => {
     if (mapRef.current || !mapDivRef.current) return;
@@ -228,7 +296,7 @@ export default function MapScreen({ onNav, onOpenProduct }) {
     });
 
     return () => cancelAnimationFrame(animationFrame);
-  }, [selectedStore]);
+  }, [selectedStore, sheetState]);
 
   function searchThisArea() {
     const center = mapRef.current?.getCenter();
@@ -281,8 +349,9 @@ export default function MapScreen({ onNav, onOpenProduct }) {
           store={selectedStore}
           sheetState={sheetState}
           sheetRef={sheetRef}
-          onToggle={() => setSheetState(sheetState === 'collapsed' ? 'expanded' : 'collapsed')}
+          onToggle={setSheetState}
           onOpenProduct={onOpenProduct}
+          onOpenStore={onOpenStore}
         />}
       </div>
       <BottomNav active="store" onNav={onNav} />

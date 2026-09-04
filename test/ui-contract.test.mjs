@@ -227,6 +227,7 @@ test('the selected store sheet renders one row per marker stock number', () => {
       sheetState: 'collapsed',
       onToggle() {},
       onOpenProduct() {},
+      onOpenStore() {},
     }),
   );
 
@@ -235,6 +236,25 @@ test('the selected store sheet renders one row per marker stock number', () => {
   assert.match(html, /class="sheet-notice-card"/);
   assert.match(html, /\[입고알림\] 라스트픽 온라인 입고 완료되었습니다\./);
   assert.match(html, /12분 전/);
+});
+
+test('the map sheet separates store navigation from its drag region', async () => {
+  const selectedStore = STORES.find((store) => store.id === 'chungmuro');
+  const html = renderToStaticMarkup(
+    React.createElement(StoreSheet, {
+      store: selectedStore,
+      sheetState: 'collapsed',
+      onToggle() {},
+      onOpenProduct() {},
+      onOpenStore() {},
+    }),
+  );
+  const source = await readFile(new URL('../src/components/MapScreen.jsx', import.meta.url), 'utf8');
+
+  assert.match(html, /aria-label="올리브영 충무로역점 상세 보기"/);
+  assert.match(html, /data-sheet-drag-region="true"/);
+  assert.match(source, /onOpenStore\(store\)/);
+  assert.match(source, /initialSelectedStoreId/);
 });
 
 test('the selected marker offset places it above a responsive bottom sheet', () => {
