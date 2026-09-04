@@ -4,7 +4,7 @@ export function Dim({ onClick }) {
   return <div className="dim" onClick={onClick}></div>;
 }
 
-export function PickupSheet({ product, qty, onMinus, onPlus, onClose, onAddToCart }) {
+export function PickupSheet({ store = MAIN_STORE, product, qty, onMinus, onPlus, onClose, onAddToCart }) {
   if (!product) return null;
   return (
     <div className="pickup-sheet">
@@ -12,7 +12,7 @@ export function PickupSheet({ product, qty, onMinus, onPlus, onClose, onAddToCar
         <h3>올클맵 픽업 주문</h3>
         <img className="x" src="/icons/pickup-close.svg" alt="close" onClick={onClose} />
       </div>
-      <div className="store-line"><b>픽업 매장</b> <span>{MAIN_STORE.name}</span></div>
+      <div className="store-line"><b>픽업 매장</b> <span>{store.name}</span></div>
       <div className="item">
         <div className="nm">{product.name}</div>
         <div className="variant">{product.variant}</div>
@@ -38,12 +38,12 @@ export function PickupSheet({ product, qty, onMinus, onPlus, onClose, onAddToCar
   );
 }
 
-export function ConfirmDialog({ onKeep, onSwitch }) {
+export function ConfirmDialog({ store = MAIN_STORE, onKeep, onSwitch }) {
   return (
     <div className="confirm-card">
       <h3>선택한 매장에서 픽업하시겠어요?</h3>
       <p>픽업 장바구니에 다른 매장이 지정되어 있어요.<br />방금 선택한 매장에서 픽업하시겠어요?</p>
-      <div className="store-pill">{MAIN_STORE.name}</div>
+      <div className="store-pill">{store.name}</div>
       <div className="actions">
         <button className="keep" onClick={onKeep}>기존 매장 유지</button>
         <button className="switch" onClick={onSwitch}>이 매장 픽업</button>
@@ -52,7 +52,7 @@ export function ConfirmDialog({ onKeep, onSwitch }) {
   );
 }
 
-export function BarcodeCard({ countdown, onClose, onRestart }) {
+export function BarcodeCard({ store = MAIN_STORE, countdown, onClose, onRestart }) {
   return (
     <div className="barcode-card">
       <div className="hd">
@@ -72,9 +72,9 @@ export function BarcodeCard({ countdown, onClose, onRestart }) {
         <div className="num">1227121230310260821228</div>
       </div>
       <div className="storeinfo">
-        <div className="nm">{MAIN_STORE.name}</div>
-        <div className="addr">{MAIN_STORE.addr}</div>
-        <div className="tel">☎ {MAIN_STORE.tel}</div>
+        <div className="nm">{store.name}</div>
+        <div className="addr">{store.addr}</div>
+        <div className="tel">☎ {store.tel ?? MAIN_STORE.tel}</div>
         <div className="fans">1,105명이 관심매장으로 등록했습니다.</div>
       </div>
       <div className="close-btn" onClick={onRestart}>처음부터 다시 보기</div>

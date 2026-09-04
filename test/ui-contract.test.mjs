@@ -27,7 +27,8 @@ const {
   getSelectedMarkerOffset,
   getStoreBounds,
 } = mapModule;
-const { StoreHome } = await vite.ssrLoadModule('/src/components/Screens.jsx');
+const { Cart, StoreDetail, StoreHome } = await vite.ssrLoadModule('/src/components/Screens.jsx');
+const { BarcodeCard, ConfirmDialog, PickupSheet } = await vite.ssrLoadModule('/src/components/Overlays.jsx');
 const { CREW_TALKS, STORES, PRODUCTS } = await vite.ssrLoadModule('/src/data.js');
 const {
   FIXED_LOCATION,
@@ -228,6 +229,87 @@ test('the selected store sheet renders one row per marker stock number', () => {
   assert.match(html, /class="sheet-notice-card"/);
   assert.match(html, /\[입고알림\] 라스트픽 온라인 입고 완료되었습니다\./);
   assert.match(html, /12분 전/);
+});
+
+test('the store title opens the selected store without toggling the sheet', () => {
+  const selectedStore = STORES.find((store) => store.id === 'chungmuro');
+  let openedStore = null;
+  let toggleCount = 0;
+  const sheet = StoreSheet({
+    store: selectedStore,
+    sheetState: 'collapsed',
+    onToggle() { toggleCount += 1; },
+    onOpenStore(store) { openedStore = store; },
+    onOpenProduct() {},
+  });
+  const controls = sheet.props.children[0].props.children;
+  const storeTitleButton = controls.find((child) => child.props?.className === 'store-title');
+
+  assert.equal(storeTitleButton.type, 'button');
+  storeTitleButton.props.onClick();
+  assert.equal(openedStore, selectedStore);
+  assert.equal(toggleCount, 0);
+});
+
+test('the store sheet toggle exposes collapsed and expanded state', () => {
+  const selectedStore = STORES.find((store) => store.id === 'chungmuro');
+  const renderSheet = (sheetState) => renderToStaticMarkup(
+    React.createElement(StoreSheet, {
+      store: selectedStore,
+      sheetState,
+      onToggle() {},
+      onOpenStore() {},
+      onOpenProduct() {},
+    }),
+  );
+
+  assert.match(renderSheet('collapsed'), /aria-expanded="false"/);
+  assert.match(renderSheet('expanded'), /aria-expanded="true"/);
+});
+
+test('the store detail renders the selected store name', () => {
+  const selectedStore = STORES.find((store) => store.id === 'chungmuro');
+  const html = renderToStaticMarkup(
+    React.createElement(StoreDetail, {
+      store: selectedStore,
+      onNav() {},
+      onOrder() {},
+      toastShown: false,
+      onGoCart() {},
+    }),
+  );
+
+  assert.equal((html.match(/올리브영 충무로역점/g) ?? []).length, 2);
+  assert.doesNotMatch(html, /올리브영 명동 타운/);
+  assert.match(html, /서울특별시 중구 퇴계로 222/);
+  assert.doesNotMatch(html, /OLIVE YOUNG MYEONGDONG GLOBAL/);
+});
+
+test('the selected store remains consistent through pickup, confirmation, cart, and barcode', () => {
+  const selectedStore = STORES.find((store) => store.id === 'chungmuro');
+  const product = PRODUCTS[0];
+  const pickupHtml = renderToStaticMarkup(
+    React.createElement(PickupSheet, { store: selectedStore, product, qty: 1 }),
+  );
+  const confirmHtml = renderToStaticMarkup(
+    React.createElement(ConfirmDialog, { store: selectedStore }),
+  );
+  const cartHtml = renderToStaticMarkup(
+    React.createElement(Cart, {
+      onNav() {},
+      cart: [{ store: selectedStore, product, qty: 1 }],
+      onQtyChange() {},
+      onPurchase() {},
+    }),
+  );
+  const barcodeHtml = renderToStaticMarkup(
+    React.createElement(BarcodeCard, { store: selectedStore, countdown: '1초' }),
+  );
+
+  for (const html of [pickupHtml, confirmHtml, cartHtml, barcodeHtml]) {
+    assert.match(html, /올리브영 충무로역점/);
+    assert.doesNotMatch(html, /올리브영 명동 타운/);
+  }
 });
 
 test('the selected marker offset places it above a responsive bottom sheet', () => {
