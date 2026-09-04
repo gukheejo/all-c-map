@@ -181,14 +181,15 @@ test('the selected marker offset places it above a responsive bottom sheet', () 
   assert.deepEqual(getSelectedMarkerOffset(448, 307), [0, -163]);
 });
 
-test('the selected camera zooms in enough for max bounds to allow the vertical offset', () => {
-  const selectedStore = STORES.find((store) => store.id === 'chungmuro');
-  assert.deepEqual(getSelectedCameraOptions(selectedStore, 754, 400), {
-    center: [126.9962525, 37.5615827],
-    offset: [0, -103],
-    zoom: 15.5,
-    duration: 450,
-  });
+test('the selected camera centers every store above the sheet', () => {
+  for (const store of STORES) {
+    assert.deepEqual(getSelectedCameraOptions(store, 754, 400), {
+      center: [store.lng, store.lat],
+      offset: [0, -103],
+      zoom: 15.5,
+      duration: 450,
+    });
+  }
 });
 
 test('the initial map viewport can fit all ten nearby stores', async () => {

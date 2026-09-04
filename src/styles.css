@@ -169,12 +169,12 @@ a{color:inherit;text-decoration:none}
 .ai-banner .x img{width:12px;height:12px}
 .search-here{position:absolute;left:50%;bottom:28px;transform:translateX(-50%);background:#fff;border:1px solid #e5e7eb;border-radius:999px;padding:10px 20px;font-size:14px;font-weight:700;box-shadow:0 10px 8px rgba(0,0,0,.1),0 4px 4px rgba(0,0,0,.1);z-index:4;white-space:nowrap;display:flex;align-items:center;gap:8px}
 .search-here img{width:15px;height:15px}
-.map-marker{position:relative;display:block;padding:0;background:none;color:#000;white-space:nowrap;cursor:pointer;overflow:visible}
-.map-marker-label{display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid #fff;border-radius:30px;padding:7px 10px;font-size:14px;line-height:normal;font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,.2)}
-.map-marker-badge{position:absolute;right:0;top:-8px;display:flex;align-items:center;justify-content:center;width:18px;height:18px;padding:3px;background:#fff;border:.8px solid #a5a5a5;border-radius:9px;color:#404040;font-size:9.519px;line-height:1;font-weight:600;letter-spacing:-.76px}
+.map-marker{position:absolute;display:block;padding:0;background:none;color:#000;white-space:nowrap;cursor:pointer;overflow:visible}
+.map-marker-label{display:flex;align-items:center;justify-content:center;background:#fff;border:1.4px solid #fff;border-radius:30px;padding:8px 10px;font-size:14px;line-height:normal;font-weight:700;box-shadow:0 2px 3px rgba(0,0,0,.25)}
+.map-marker-badge{position:absolute;right:-2px;top:-9px;display:flex;align-items:center;justify-content:center;width:18px;height:18px;padding:3px;background:#fff;border:1.038px solid #a5a5a5;border-radius:9px;color:#404040;font-size:9.519px;line-height:1;font-weight:600;letter-spacing:-.7615px}
 .map-marker.ai .map-marker-label{border-color:var(--ai-green)}
 .map-marker.ai .map-marker-badge{background:var(--ai-green);border-color:var(--ai-green)}
-.map-marker.selected{z-index:2}
+.map-marker.selected{z-index:20}
 .map-marker.selected .map-marker-label{background:#222;border-color:var(--ai-green);color:#fff}
 .map-marker.selected .map-marker-badge{background:var(--ai-green);border-color:var(--ai-green);color:#222}
 
