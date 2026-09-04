@@ -34,7 +34,10 @@ export function StoreHome({ onNav }) {
         <section className="store-quick-section" aria-label="매장 바로가기">
           <div className="qm-row">
             <div className="qm"><div className="ic"><img src="/icons/qm-store.png" alt="" /></div>매장찾기</div>
-            <button type="button" className="qm hi" aria-label="올클맵 열기" onClick={() => onNav('3b')}><span className="ic"><img src="/icons/qm-clover.png" alt="" /></span><span className="qm-label">올클맵</span></button>
+            <button type="button" className="qm hi" aria-label="올클맵 열기" onClick={() => onNav('3b')}>
+              <span className="ic"><span className="olcl-art"><img src="/icons/qm-clover.png" alt="" /></span></span>
+              <span className="qm-label">올클맵</span>
+            </button>
             <div className="qm"><div className="ic"><img src="/icons/qm-map.png" alt="" /></div>매장재고</div>
             <div className="qm"><div className="ic"><img src="/icons/qm-stock.png" alt="" /></div>쿠폰/증정</div>
             <div className="qm"><div className="ic"><img src="/icons/qm-coupon.png" alt="" /></div>스킨스캔</div>
@@ -47,7 +50,7 @@ export function StoreHome({ onNav }) {
           <span className="sr-only">{FIXED_LOCATION.address}</span>
           <div className="reco-map" aria-label={`${FIXED_LOCATION.address} 기준 ${nearestStore.name}`}>
             <div className="pin">
-              {nearestStore.name}
+              <span className="pin-label">{nearestStore.name}</span>
               <span className="pin-stock">{nearestStore.stock}</span>
             </div>
           </div>
@@ -92,7 +95,7 @@ export function StoreHome({ onNav }) {
                   <div className="name">{store.name}<span className="dist">{formatDistance(distanceKm(FIXED_LOCATION, store))}</span></div>
                   <div className="addr">{store.addr}</div>
                   <div className="hours"><strong>영업 중</strong> · 10:00 ~ {index === 0 ? '22:00' : '22:30'}</div>
-                  <div className="badges"><span className="benefit">쿠폰/증정</span><span>픽업</span>{index === 0 && <span>스마트 반품</span>}</div>
+                  <div className="badges"><span className="benefit">쿠폰/증정</span><span>픽업</span>{index === 0 && <><span>스마트 반품</span><span>신규오픈</span></>}</div>
                 </div>
               </div>
               <div className="store-gift-notice">

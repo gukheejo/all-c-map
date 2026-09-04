@@ -89,6 +89,15 @@ test('the All-C-Map quick tile uses the clover artwork and recommendation copy s
   assert.equal((html.match(/aria-expanded="false"/g) ?? []).length, 2);
 });
 
+test('the Figma quick tile and map stock badge use separate visual layers', () => {
+  const html = renderToStaticMarkup(
+    React.createElement(StoreHome, { onNav() {} }),
+  );
+
+  assert.match(html, /class="ic"><span class="olcl-art"><img src="\/icons\/qm-clover\.png"/);
+  assert.match(html, /class="pin"><span class="pin-label">올리브영 충무로역점<\/span><span class="pin-stock">7<\/span>/);
+});
+
 test('a Crew Talk item toggles independently between collapsed and expanded', () => {
   assert.deepEqual(toggleExpandedId([], 'p1'), ['p1']);
   assert.deepEqual(toggleExpandedId(['p1', 'p3'], 'p1'), ['p3']);
