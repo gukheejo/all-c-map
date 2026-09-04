@@ -27,4 +27,12 @@ export const PRODUCTS = [
   { id: 'p5', name: '[베이스1위] 더샘 커버 퍼펙션 트리플 팟 컨실러', variant: '01 코렉트 베이지', img: '/photos/product-5.png', orig: 12000, price: 4800, pct: 60, stock: 2 },
 ];
 
+export const CREW_TALKS = [
+  { id: 'talk-p1', product: PRODUCTS[0], store: STORES[0], date: '2026.08.19', message: PRODUCTS[0].talk },
+  { id: 'talk-p4', product: PRODUCTS[3], store: { name: '명동거리점' }, date: '2026.08.12', message: '뽑하고 사용하면 마스카라처럼 가닥 속눈썹 연출 가능해요! 속눈썹 풍성해지는 매력까지...♡' },
+  { id: 'talk-p5', product: PRODUCTS[4], store: STORES[7], date: '2026.08.12', message: '다크서클 커버할 때 필수예요! 화홍 258 브러쉬와 궁합이 좋아요.' },
+  { id: 'talk-p3', product: PRODUCTS[2], store: STORES[3], date: '2026.08.16', message: PRODUCTS[2].talk },
+  { id: 'talk-p2', product: PRODUCTS[1], store: STORES[4], date: '2026.08.19', message: '컬러가 분위기 있게 올라와서 가을 메이크업에 추천해요. 얇게 여러 번 발라보세요.' },
+];
+
 export const won = (n) => n.toLocaleString('ko-KR') + '원';
