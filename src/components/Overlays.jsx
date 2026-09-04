@@ -4,7 +4,7 @@ export function Dim({ onClick }) {
   return <div className="dim" onClick={onClick}></div>;
 }
 
-export function PickupSheet({ product, qty, onMinus, onPlus, onClose, onAddToCart }) {
+export function PickupSheet({ store = MAIN_STORE, product, qty, onMinus, onPlus, onClose, onAddToCart }) {
   if (!product) return null;
   return (
     <div className="pickup-sheet">
@@ -12,16 +12,16 @@ export function PickupSheet({ product, qty, onMinus, onPlus, onClose, onAddToCar
         <h3>올클맵 픽업 주문</h3>
         <img className="x" src="/icons/pickup-close.svg" alt="close" onClick={onClose} />
       </div>
-      <div className="store-line"><b>픽업 매장</b> <span>{MAIN_STORE.name}</span></div>
+      <div className="store-line"><b>픽업 매장</b> <span>{store.name}</span></div>
       <div className="item">
         <div className="nm">{product.name}</div>
         <div className="variant">{product.variant}</div>
         <div className="stock">잔여재고 | {product.stock}개</div>
         <div className="qtyrow">
           <div className="qty-stepper">
-            <button onClick={onMinus}><img src="/icons/pickup-minus.svg" alt="-" /></button>
+            <button onClick={onMinus} disabled={qty <= 1}><img src="/icons/pickup-minus.svg" alt="-" /></button>
             <span className="val">{qty}</span>
-            <button onClick={onPlus}><img src="/icons/pickup-plus.svg" alt="+" /></button>
+            <button onClick={onPlus} disabled={qty >= product.stock}><img src="/icons/pickup-plus.svg" alt="+" /></button>
           </div>
           <div className="price">
             <span className="origp">{won(product.orig)}</span>

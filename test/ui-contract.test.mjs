@@ -25,7 +25,8 @@ const {
   getSelectedMarkerOffset,
   getStoreBounds,
 } = mapModule;
-const { StoreHome } = await vite.ssrLoadModule('/src/components/Screens.jsx');
+const { StoreDetail, StoreHome } = await vite.ssrLoadModule('/src/components/Screens.jsx');
+const { PickupSheet } = await vite.ssrLoadModule('/src/components/Overlays.jsx');
 const { STORES, PRODUCTS } = await vite.ssrLoadModule('/src/data.js');
 const {
   FIXED_LOCATION,
@@ -255,6 +256,34 @@ test('the map sheet separates store navigation from its drag region', async () =
   assert.match(html, /data-sheet-drag-region="true"/);
   assert.match(source, /onOpenStore\(store\)/);
   assert.match(source, /initialSelectedStoreId/);
+});
+
+test('store detail and pickup sheet render the selected map store and identical rows', () => {
+  const store = STORES.find((item) => item.id === 'chungmuro');
+  const products = buildStoreProducts(PRODUCTS, store.stock);
+  const detail = renderToStaticMarkup(React.createElement(StoreDetail, {
+    store,
+    products,
+    onNav() {},
+    onOrder() {},
+    toastShown: false,
+    onDismissToast() {},
+    onGoCart() {},
+  }));
+  const sheet = renderToStaticMarkup(React.createElement(PickupSheet, {
+    store,
+    product: products[0],
+    qty: 1,
+    onMinus() {},
+    onPlus() {},
+    onClose() {},
+    onAddToCart() {},
+  }));
+
+  assert.match(detail, /올리브영 충무로역점/);
+  assert.equal((detail.match(/data-detail-product="true"/g) ?? []).length, store.stock);
+  assert.match(sheet, /올리브영 충무로역점/);
+  assert.match(sheet, /disabled=""/);
 });
 
 test('the selected marker offset places it above a responsive bottom sheet', () => {

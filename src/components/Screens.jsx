@@ -130,13 +130,21 @@ export function ProductPlaceholder({ product, onNav }) {
   );
 }
 
-export function StoreDetail({ onNav, onOrder, toastShown, onGoCart }) {
+export function StoreDetail({
+  store = MAIN_STORE,
+  products = PRODUCTS,
+  onNav,
+  onOrder,
+  toastShown,
+  onDismissToast,
+  onGoCart,
+}) {
   return (
     <section className="screen active" id="screen-4">
       <div className="screen-body">
         <div className="topbar">
           <button className="back" onClick={() => onNav('3b')}><img src="/icons/detail-back.svg" alt="back" /></button>
-          <h1>올리브영 명동 타운</h1>
+          <h1>{store.name}</h1>
         </div>
         <div className="store-hero-wrap">
           <img src="/photos/store-hero.png" alt="" />
@@ -145,7 +153,7 @@ export function StoreDetail({ onNav, onOrder, toastShown, onGoCart }) {
         <div className="store-info">
           <div className="lang"><img src="/icons/detail-lang.png" alt="" />한국어</div>
           <div className="name-row">
-            <h2>올리브영 명동 타운</h2>
+            <h2>{store.name}</h2>
             <div className="acts"><img src="/icons/detail-star.svg" alt="" /><img src="/icons/detail-dots.svg" alt="" /></div>
           </div>
           <div className="en">OLIVE YOUNG MYEONGDONG GLOBAL</div>
@@ -153,8 +161,8 @@ export function StoreDetail({ onNav, onOrder, toastShown, onGoCart }) {
         <div className="store-actions"><button className="btn-outline">매장 상품 보기</button><button className="btn-outline">매장 소식</button></div>
         <div className="store-tabs"><span>기본 정보</span><span>매장행사</span><span>인기 상품</span><span className="active">클리어런스</span></div>
         <div id="store-products">
-          {PRODUCTS.map((p) => (
-            <div className="pcard" key={p.id}>
+          {products.map((p) => (
+            <div className="pcard" key={p.listKey ?? p.id} data-detail-product="true">
               <div className="row">
                 <img className="prod" src={p.img} alt="" />
                 <div className="info">
@@ -166,7 +174,7 @@ export function StoreDetail({ onNav, onOrder, toastShown, onGoCart }) {
                   <div className="stockpill">잔여재고 | {p.stock}개</div>
                   <div className="pricebar">
                     <span><span className="pct">{p.pct}%</span><span className="now">{won(p.price)}</span><span className="orig">{won(p.orig)}</span></span>
-                    <button className="order-btn" onClick={() => onOrder(p.id)}>픽업주문</button>
+                    <button className="order-btn" onClick={() => onOrder(p)}>픽업주문</button>
                   </div>
                 </div>
               </div>
@@ -177,9 +185,10 @@ export function StoreDetail({ onNav, onOrder, toastShown, onGoCart }) {
       </div>
       <BottomNav active="store" onNav={onNav} />
       {toastShown && (
-        <div className="toast">
+        <div className="toast" role="status">
           <span>나의 픽업 장바구니에 담았어요</span>
-          <a onClick={onGoCart}>장바구니로 이동</a>
+          <button type="button" className="toast-link" onClick={onGoCart}>장바구니로 이동</button>
+          <button type="button" className="toast-close" aria-label="알림 닫기" onClick={onDismissToast}>×</button>
         </div>
       )}
     </section>
