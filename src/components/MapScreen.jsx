@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { STORES, PRODUCTS, won } from '../data.js';
-import { FIXED_LOCATION, buildStoreProducts, selectNearestStores } from '../store-utils.js';
+import { CREW_TALKS, STORES, PRODUCTS, won } from '../data.js';
+import { FIXED_LOCATION, buildStoreProducts, filterCrewTalkItems, selectNearestStores, toggleExpandedId } from '../store-utils.js';
 import BottomNav from './BottomNav.jsx';
 
 export { selectNearestStores } from '../store-utils.js';
@@ -85,17 +85,25 @@ function makePinElement(store, selected, onClick) {
   return marker;
 }
 
-export function StoreSheet({ store, sheetState, onToggle, onOpenProduct, sheetRef }) {
+export function StoreSheet({ store, sheetState, onToggle, onOpenStore, onOpenProduct, sheetRef }) {
   const storeProducts = buildStoreProducts(PRODUCTS, store.stock);
 
   return (
     <div className={'sheet show ' + sheetState} ref={sheetRef}>
-      <button type="button" className="sheet-head" onClick={onToggle}>
-        <span className="sheet-handle" />
-        <span className="store-title">
+      <div className="sheet-head">
+        <button
+          type="button"
+          className="sheet-toggle"
+          onClick={onToggle}
+          aria-expanded={sheetState === 'expanded'}
+          aria-label={sheetState === 'expanded' ? '바텀시트 접기' : '바텀시트 펼치기'}
+        >
+          <span className="sheet-handle" />
+        </button>
+        <button type="button" className="store-title" onClick={() => onOpenStore(store)} aria-label={`${store.name} 상세 보기`}>
           {store.name} <img src="/icons/map-link.svg" alt="" />
-        </span>
-      </button>
+        </button>
+      </div>
       <div className="sheet-notice">
         <div className="sheet-notice-card">
           <img className="notice-icon" src="/icons/notice-bell.svg" alt="" />
@@ -132,7 +140,74 @@ export function StoreSheet({ store, sheetState, onToggle, onOpenProduct, sheetRe
   );
 }
 
-export default function MapScreen({ onNav, onOpenProduct }) {
+export function CrewTalkFilters({ crewTalkOpen, onCrewTalkToggle }) {
+  return (
+    <div className="map-filters">
+      <button type="button"><img src="/icons/map-clock.svg" alt="" />영업중</button>
+      <button
+        type="button"
+        className={`crew-talk-filter${crewTalkOpen ? ' active' : ''}`}
+        aria-pressed={crewTalkOpen}
+        onClick={onCrewTalkToggle}
+      >
+        <img src="/icons/map-chat.svg" alt="" />크루톡
+      </button>
+    </div>
+  );
+}
+
+export function CrewTalkSheet({ items, query, expandedTalkIds, onQueryChange, onToggleTalk, onClose }) {
+  return (
+    <div className="sheet show expanded crew-talk-sheet">
+      <button type="button" className="sheet-head" onClick={onClose} aria-label="크루톡 바텀시트 닫기">
+        <span className="sheet-handle" />
+        <span className="store-title">크루톡<img src="/icons/map-link.svg" alt="" /></span>
+      </button>
+      <div className="crew-talk-search-row">
+        <label className="crew-talk-search">
+          <span className="sr-only">크루톡 상품 검색</span>
+          <input
+            type="search"
+            value={query}
+            placeholder="궁금한 상품명을 검색해보세요"
+            onChange={(event) => onQueryChange(event.target.value)}
+          />
+          <img src="/icons/store-search.svg" alt="" />
+        </label>
+        <span className="crew-talk-sort">최신순<img src="/icons/map-link.svg" alt="" /></span>
+      </div>
+      <div className="crew-talk-feed">
+        {items.map((item) => {
+          const expanded = expandedTalkIds.includes(item.id);
+          return (
+            <article className="crew-talk-feed-item" key={item.id}>
+              <div className="crew-talk-product-row">
+                <img className="crew-talk-product-image" src={item.product.img} alt="" />
+                <div className="crew-talk-product-info">
+                  <strong>{item.product.name}</strong>
+                  <div><span>{item.product.variant}</span><span className="crew-talk-stock">잔여 재고 {item.product.stock}개</span></div>
+                </div>
+                <time>{item.date}</time>
+              </div>
+              <button
+                type="button"
+                className={`crew-talk-message${expanded ? ' expanded' : ''}`}
+                aria-expanded={expanded}
+                onClick={() => onToggleTalk(item.id)}
+              >
+                <b>{item.store.name}</b>
+                <span>{item.message}</span>
+              </button>
+            </article>
+          );
+        })}
+        {!items.length && <p className="crew-talk-empty">검색 결과가 없습니다.</p>}
+      </div>
+    </div>
+  );
+}
+
+export default function MapScreen({ onNav, onOpenProduct, onOpenStore }) {
   const mapDivRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef([]);
@@ -144,6 +219,9 @@ export default function MapScreen({ onNav, onOpenProduct }) {
   const [showSearchButton, setShowSearchButton] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
   const [sheetState, setSheetState] = useState('closed');
+  const [crewTalkOpen, setCrewTalkOpen] = useState(false);
+  const [crewTalkQuery, setCrewTalkQuery] = useState('');
+  const [expandedTalkIds, setExpandedTalkIds] = useState([]);
 
   useEffect(() => {
     if (mapRef.current || !mapDivRef.current) return;
@@ -180,6 +258,7 @@ export default function MapScreen({ onNav, onOpenProduct }) {
   }, []);
 
   function selectStore(id) {
+    setCrewTalkOpen(false);
     setSelectedId(id);
     setShowAiBanner(false);
     setSheetState('collapsed');
@@ -240,12 +319,22 @@ export default function MapScreen({ onNav, onOpenProduct }) {
     setShowSearchButton(false);
   }
 
+  function toggleCrewTalk() {
+    if (!crewTalkOpen) {
+      setSelectedId(null);
+      setSheetState('closed');
+    }
+    setCrewTalkOpen(!crewTalkOpen);
+  }
+
+  const visibleCrewTalks = filterCrewTalkItems(CREW_TALKS, crewTalkQuery);
+
   return (
     <section className="screen active" id="screen-3b">
       <div className="map-wrap">
         <div className="map-canvas">
           <div id="maplibre-map" ref={mapDivRef} aria-label="충무로 주변 올리브영 실제 지도" />
-          {(showAiBanner || selectedStore) && <img className="map-dim-art" src="/icons/map-dim-screen.svg" alt="" />}
+          {(showAiBanner || selectedStore || crewTalkOpen) && <img className="map-dim-art" src="/icons/map-dim-screen.svg" alt="" />}
         </div>
 
         <div className="map-topbar">
@@ -255,12 +344,7 @@ export default function MapScreen({ onNav, onOpenProduct }) {
           <h1>올클맵</h1>
         </div>
 
-        {!showAiBanner && (
-          <div className="map-filters">
-            <button type="button"><img src="/icons/map-clock.svg" alt="" />영업중</button>
-            <button type="button"><img src="/icons/map-chat.svg" alt="" />크루톡</button>
-          </div>
-        )}
+        {!showAiBanner && <CrewTalkFilters crewTalkOpen={crewTalkOpen} onCrewTalkToggle={toggleCrewTalk} />}
 
         {showAiBanner && (
           <div className="ai-banner" role="status">
@@ -271,7 +355,7 @@ export default function MapScreen({ onNav, onOpenProduct }) {
           </div>
         )}
 
-        {showSearchButton && (
+        {showSearchButton && !crewTalkOpen && (
           <button type="button" className="search-here" onClick={searchThisArea}>
             <img src="/icons/map-search-here.svg" alt="" />이 지역 매장 검색
           </button>
@@ -282,8 +366,19 @@ export default function MapScreen({ onNav, onOpenProduct }) {
           sheetState={sheetState}
           sheetRef={sheetRef}
           onToggle={() => setSheetState(sheetState === 'collapsed' ? 'expanded' : 'collapsed')}
+          onOpenStore={onOpenStore}
           onOpenProduct={onOpenProduct}
         />}
+        {crewTalkOpen && (
+          <CrewTalkSheet
+            items={visibleCrewTalks}
+            query={crewTalkQuery}
+            expandedTalkIds={expandedTalkIds}
+            onQueryChange={setCrewTalkQuery}
+            onToggleTalk={(id) => setExpandedTalkIds((current) => toggleExpandedId(current, id))}
+            onClose={() => setCrewTalkOpen(false)}
+          />
+        )}
       </div>
       <BottomNav active="store" onNav={onNav} />
     </section>

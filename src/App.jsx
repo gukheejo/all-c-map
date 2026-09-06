@@ -6,6 +6,7 @@ import { PRODUCTS, MAIN_STORE } from './data.js';
 
 export default function App() {
   const [screen, setScreen] = useState('2');
+  const [detailStore, setDetailStore] = useState(MAIN_STORE);
   const [productId, setProductId] = useState(null);
   const [cart, setCart] = useState([]);
   const [pickup, setPickup] = useState(null); // {product, qty}
@@ -24,9 +25,14 @@ export default function App() {
     setScreen('product');
   }
 
+  function openStore(store) {
+    setDetailStore(store);
+    setScreen('4');
+  }
+
   function openPickup(id) {
     const product = PRODUCTS.find((p) => p.id === id);
-    setPickup({ product, qty: 1 });
+    setPickup({ product, qty: 1, store: detailStore });
   }
   function closePickup() {
     setPickup(null);
@@ -47,7 +53,7 @@ export default function App() {
     setPickup(null);
   }
   function switchStore() {
-    setCart([{ store: MAIN_STORE, product: pickup.product, qty: pickup.qty }]);
+    setCart([{ store: pickup.store, product: pickup.product, qty: pickup.qty }]);
     setConfirmOpen(false);
     setPickup(null);
     setScreen('4');
@@ -95,10 +101,16 @@ export default function App() {
   return (
       <div id="stage">
         {screen === '2' && <StoreHome onNav={goNav} />}
-        {screen === '3b' && <MapScreen onNav={goNav} onOpenProduct={openProduct} />}
+        {screen === '3b' && <MapScreen onNav={goNav} onOpenProduct={openProduct} onOpenStore={openStore} />}
         {screen === 'product' && <ProductPlaceholder product={productObj} onNav={goNav} />}
         {screen === '4' && (
-          <StoreDetail onNav={goNav} onOrder={openPickup} toastShown={toastShown} onGoCart={goCartFromToast} />
+          <StoreDetail
+            store={detailStore}
+            onNav={goNav}
+            onOrder={openPickup}
+            toastShown={toastShown}
+            onGoCart={goCartFromToast}
+          />
         )}
         {screen === '6' && <Cart onNav={goNav} cart={cart} onQtyChange={cartQtyChange} onPurchase={purchase} />}
 
@@ -108,6 +120,7 @@ export default function App() {
         }} />}
         {pickup && !confirmOpen && (
           <PickupSheet
+            store={pickup.store}
             product={pickup.product}
             qty={pickup.qty}
             onMinus={() => pickupQty(-1)}
@@ -116,8 +129,15 @@ export default function App() {
             onAddToCart={toCartClicked}
           />
         )}
-        {confirmOpen && <ConfirmDialog onKeep={keepExisting} onSwitch={switchStore} />}
-        {barcodeOpen && <BarcodeCard countdown={countdown} onClose={closeBarcode} onRestart={restartDemo} />}
+        {confirmOpen && <ConfirmDialog store={pickup?.store} onKeep={keepExisting} onSwitch={switchStore} />}
+        {barcodeOpen && (
+          <BarcodeCard
+            store={cart[0]?.store ?? detailStore}
+            countdown={countdown}
+            onClose={closeBarcode}
+            onRestart={restartDemo}
+          />
+        )}
       </div>
   );
 }
