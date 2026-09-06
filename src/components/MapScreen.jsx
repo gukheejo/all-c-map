@@ -88,41 +88,41 @@ function makePinElement(store, selected, onClick) {
 export function StoreSheet({ store, sheetState, onToggle, onOpenProduct, onOpenStore, sheetRef }) {
   const storeProducts = buildStoreProducts(PRODUCTS, store.stock);
   const dragRef = useRef(null);
+  const mouseCleanupRef = useRef(() => {});
   const [dragHeight, setDragHeight] = useState(null);
   const [dragging, setDragging] = useState(false);
+
+  useEffect(() => () => mouseCleanupRef.current(), []);
 
   function toggleSheet() {
     onToggle(sheetState === 'collapsed' ? 'expanded' : 'collapsed');
   }
 
-  function handlePointerDown(event) {
-    if (event.button !== undefined && event.button !== 0) return;
+  function beginDrag(clientY) {
     const sheet = sheetRef?.current;
     if (!sheet) return;
     const stageHeight = sheet.parentElement?.clientHeight ?? window.innerHeight;
     dragRef.current = {
-      pointerId: event.pointerId,
-      startY: event.clientY,
+      startY: clientY,
       startTime: performance.now(),
       startHeight: sheet.getBoundingClientRect().height,
       minHeight: Math.min(400, Math.max(300, stageHeight * 0.5)),
       maxHeight: Math.max(300, stageHeight - 57),
     };
-    event.currentTarget.setPointerCapture?.(event.pointerId);
     setDragging(true);
   }
 
-  function handlePointerMove(event) {
+  function moveDrag(clientY) {
     const drag = dragRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    const deltaY = event.clientY - drag.startY;
+    if (!drag) return;
+    const deltaY = clientY - drag.startY;
     setDragHeight(Math.min(drag.maxHeight, Math.max(drag.minHeight, drag.startHeight - deltaY)));
   }
 
-  function finishDrag(event) {
+  function finishDrag(clientY) {
     const drag = dragRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    const deltaY = event.clientY - drag.startY;
+    if (!drag) return;
+    const deltaY = clientY - drag.startY;
     const elapsed = Math.max(1, performance.now() - drag.startTime);
     const velocityY = deltaY / elapsed;
     const wasTap = Math.abs(deltaY) < 6;
@@ -133,32 +133,68 @@ export function StoreSheet({ store, sheetState, onToggle, onOpenProduct, onOpenS
     else onToggle(resolveSheetSnap(sheetState, deltaY, velocityY));
   }
 
+  function handleMouseDown(event) {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    beginDrag(event.clientY);
+    const handleMouseMove = (moveEvent) => moveDrag(moveEvent.clientY);
+    const handleMouseUp = (upEvent) => {
+      finishDrag(upEvent.clientY);
+      mouseCleanupRef.current();
+    };
+    mouseCleanupRef.current = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      mouseCleanupRef.current = () => {};
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }
+
+  function handleTouchStart(event) {
+    const touch = event.touches[0];
+    if (touch) beginDrag(touch.clientY);
+  }
+
+  function handleTouchMove(event) {
+    const touch = event.touches[0];
+    if (touch) moveDrag(touch.clientY);
+  }
+
+  function handleTouchEnd(event) {
+    const touch = event.changedTouches[0];
+    if (touch) finishDrag(touch.clientY);
+  }
+
   return (
     <div
       className={'sheet show ' + sheetState + (dragging ? ' dragging' : '')}
       ref={sheetRef}
       style={dragHeight == null ? undefined : { height: `${dragHeight}px` }}
     >
-      <div
-        className="sheet-head"
-        data-sheet-drag-region="true"
-        role="button"
-        tabIndex="0"
-        aria-label={sheetState === 'collapsed' ? '매장 상품 목록 펼치기' : '매장 상품 목록 접기'}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') toggleSheet();
-        }}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={finishDrag}
-        onPointerCancel={finishDrag}
-      >
-        <span className="sheet-handle" />
+      <div className="sheet-head">
+        <button
+          type="button"
+          className="sheet-toggle"
+          data-sheet-drag-region="true"
+          aria-label={sheetState === 'collapsed' ? '매장 상품 목록 펼치기' : '매장 상품 목록 접기'}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              toggleSheet();
+            }
+          }}
+          onMouseDown={handleMouseDown}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          <span className="sheet-handle" />
+        </button>
         <button
           type="button"
           className="store-title"
           aria-label={`${store.name} 상세 보기`}
-          onPointerDown={(event) => event.stopPropagation()}
           onClick={() => onOpenStore(store)}
         >
           {store.name} <img src="/icons/map-link.svg" alt="" />

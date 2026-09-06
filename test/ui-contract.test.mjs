@@ -264,11 +264,17 @@ test('the map sheet separates store navigation from its drag region', async () =
     }),
   );
   const source = await readFile(new URL('../src/components/MapScreen.jsx', import.meta.url), 'utf8');
+  const styles = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8');
 
   assert.match(html, /aria-label="올리브영 충무로역점 상세 보기"/);
   assert.match(html, /data-sheet-drag-region="true"/);
+  assert.match(html, /class="sheet-toggle"[^>]*data-sheet-drag-region="true"/);
+  assert.doesNotMatch(html, /class="sheet-head"[^>]*role="button"/);
   assert.match(source, /onOpenStore\(store\)/);
   assert.match(source, /initialSelectedStoreId/);
+  assert.match(source, /onMouseDown=/);
+  assert.match(source, /onTouchStart=/);
+  assert.match(styles, /\.sheet-toggle\{[^}]*height:28px/);
 });
 
 test('store detail and pickup sheet render the selected map store and identical rows', () => {
