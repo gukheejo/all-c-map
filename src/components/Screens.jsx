@@ -232,6 +232,7 @@ export function ProductDetail({ product, store = MAIN_STORE, onBack, onOrder, on
             <p><strong>{product.pct}%</strong> <b>{won(product.price)}</b></p>
           </div>
           <div className="product-condition-row">
+            {product.badge && <span className="badge-ai">{product.badge}</span>}
             {product.badge2 && <span className="condition-badge">{product.badge2}</span>}
             <span className="product-stock">잔여재고 | {product.stock}개</span>
           </div>
@@ -265,6 +266,7 @@ export function StoreDetail({
   toastShown,
   onDismissToast,
   onGoCart,
+  bottomNavHidden = false,
 }) {
   return (
     <section className="screen active" id="screen-4" data-scroll-mode="document">
@@ -298,6 +300,7 @@ export function StoreDetail({
                   <button type="button" className="nm pcard-name-link" onClick={() => onOpenProduct?.(p.id)}>{p.name}</button>
                   <div className="subrow">
                     <span className="variant">{p.variant}</span>
+                    {p.badge && <span className="badge-ai">{p.badge}</span>}
                     {p.badge2 && <span className="condition-badge">{p.badge2}</span>}
                   </div>
                   <div className="stockpill">잔여재고 | {p.stock}개</div>
@@ -317,7 +320,7 @@ export function StoreDetail({
           ))}
         </div>
       </div>
-      <BottomNav active="store" onNav={onNav} />
+      <BottomNav active="store" onNav={onNav} hidden={bottomNavHidden} />
       {toastShown && (
         <div className="toast" role="status">
           <span>나의 픽업 장바구니에 담았어요</span>

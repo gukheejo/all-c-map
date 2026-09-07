@@ -133,6 +133,7 @@ test('product detail mirrors the Figma product page and can open pickup ordering
   assert.match(html, /id="screen-product"/);
   assert.match(html, /class="product-detail-hero"/);
   assert.match(html, /올리브영 충무로역점/);
+  assert.match(html, /class="badge-ai">AI PICK<\/span>/);
   assert.match(html, /class="condition-badge"/);
   assert.match(html, /픽업주문/);
 });
@@ -291,7 +292,9 @@ test('the Crew Talk sheet renders the searchable Figma 3-e feed', () => {
   assert.match(html, /class="sheet show collapsed crew-talk-sheet"/);
   assert.match(html, /data-sheet-drag-region="true"/);
   assert.match(html, /aria-label="크루톡 목록 펼치기"/);
-  assert.match(html, />크루톡</);
+  assert.match(html, /<h2 class="store-title">크루톡<\/h2>/);
+  assert.doesNotMatch(html, /aria-label="크루톡 바텀시트 닫기"/);
+  assert.doesNotMatch(html, /src="\/icons\/map-link\.svg"/);
   assert.match(html, /placeholder="궁금한 상품명을 검색해보세요"/);
   assert.match(html, /aria-label="크루톡 정렬"/);
   assert.match(html, /value="latest" selected="">최신순/);
@@ -455,6 +458,30 @@ test('a generated store product list exposes at most three AI PICK labels', () =
   assert.equal(rows.filter((product) => product.badge === 'AI PICK').length, 3);
 });
 
+test('condition badges are evenly and deterministically distributed per store', () => {
+  const allowedConditions = new Set([undefined, '유통기한', '패키지 파손']);
+  const conditionPatterns = STORES.map((store) => {
+    const rows = buildStoreProducts(PRODUCTS, store.stock, 3, store.id);
+    const conditions = rows.map((product) => product.badge2);
+
+    assert.ok(conditions.every((condition) => allowedConditions.has(condition)));
+    const counts = [...allowedConditions].map(
+      (condition) => conditions.filter((value) => value === condition).length,
+    );
+    assert.ok(Math.max(...counts) - Math.min(...counts) <= 1);
+    if (conditions.length > 3) {
+      const isSimpleCycle = [0, 1, 2].some((offset) => conditions.every(
+        (condition, index) => condition === [...allowedConditions][(index + offset) % 3],
+      ));
+      assert.equal(isSimpleCycle, false);
+    }
+    assert.deepEqual(rows, buildStoreProducts(PRODUCTS, store.stock, 3, store.id));
+    return conditions.join('|');
+  });
+
+  assert.ok(new Set(conditionPatterns).size >= 2);
+});
+
 test('pickup flow skips 4-b and commits the selected store directly', () => {
   const store = STORES[1];
   const product = buildStoreProducts(PRODUCTS, store.stock)[0];
@@ -527,9 +554,23 @@ test('sheet release snaps on distance or flick velocity', () => {
   assert.equal(resolveSheetSnap('collapsed', -8, -0.1), 'collapsed');
 });
 
-test('Crew Talk drag bounds use exact half and full available map height', () => {
-  assert.deepEqual(getSheetDragBounds(900, true), { minHeight: 450, maxHeight: 843 });
-  assert.deepEqual(getSheetDragBounds(792, true), { minHeight: 396, maxHeight: 735 });
+test('collapsed sheets rest at an uncapped 55 percent and can expand to the available map height', () => {
+  assert.deepEqual(getSheetDragBounds(900, true), { minHeight: 900 * 0.55, maxHeight: 843 });
+  assert.deepEqual(getSheetDragBounds(792, true), { minHeight: 792 * 0.55, maxHeight: 735 });
+  assert.deepEqual(getSheetDragBounds(900), { minHeight: 900 * 0.55, maxHeight: 843 });
+});
+
+test('the map dim spotlight stays fixed when a store is selected', async () => {
+  const html = renderToStaticMarkup(React.createElement(MapScreen, {
+    onNav() {},
+    onOpenProduct() {},
+    initialSelectedStoreId: 'chungmuro',
+  }));
+  const styles = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8');
+
+  assert.match(html, /class="map-dim-art"/);
+  assert.doesNotMatch(html, /map-dim-art selected-store/);
+  assert.doesNotMatch(styles, /\.map-dim-art\.selected-store/);
 });
 
 test('expandable Crew Talk keeps its message in the accessible name', () => {
@@ -558,6 +599,8 @@ test('the selected store sheet renders one row per marker stock number', () => {
 
   assert.equal((html.match(/class="crew-item"/g) ?? []).length, 7);
   assert.equal((html.match(/class="badge-ai"/g) ?? []).length, 3);
+  assert.equal((html.match(/class="orig"/g) ?? []).length, 7);
+  assert.match(html, /class="orig">44,000원<\/span>/);
   assert.match(html, /class="sheet-notice-card"/);
   assert.match(html, /\[입고알림\] 라스트픽 온라인 입고 완료되었습니다\./);
   assert.match(html, /12분 전/);
@@ -610,7 +653,7 @@ test('the map sheet separates store navigation from its drag region', async () =
 
 test('store detail and pickup sheet render the selected map store and identical rows', () => {
   const store = STORES.find((item) => item.id === 'chungmuro');
-  const products = buildStoreProducts(PRODUCTS, store.stock);
+  const products = buildStoreProducts(PRODUCTS, store.stock, 3, store.id);
   const detail = renderToStaticMarkup(React.createElement(StoreDetail, {
     store,
     products,
@@ -632,7 +675,9 @@ test('store detail and pickup sheet render the selected map store and identical 
 
   assert.match(detail, /올리브영 충무로역점/);
   assert.equal((detail.match(/data-detail-product="true"/g) ?? []).length, store.stock);
+  assert.equal((detail.match(/class="badge-ai"/g) ?? []).length, 3);
   assert.match(sheet, /올리브영 충무로역점/);
+  assert.match(sheet, /class="badge-ai">AI PICK<\/span>/);
   assert.match(sheet, /disabled=""/);
 });
 
@@ -911,23 +956,31 @@ test('cart and barcode render the committed pickup store', () => {
   assert.match(barcodeHtml, /02-0000-0000/);
 });
 
+test('cart quantity stepper uses a minus glyph instead of a down chevron', async () => {
+  const minusIcon = await readFile(new URL('../public/icons/cart-minus.svg', import.meta.url), 'utf8');
+
+  assert.match(minusIcon, /d="M3\.75 7\.5H11\.25"/);
+  assert.doesNotMatch(minusIcon, /L7\.5 9\.375L11\.25 5\.625/);
+});
+
 test('App wires the direct pickup flow without the removed 4-b dialog', async () => {
   const source = await readFile(new URL('../src/App.jsx', import.meta.url), 'utf8');
 
   assert.doesNotMatch(source, /ConfirmDialog|confirmOpen|keepExisting|switchStore/);
   assert.match(source, /onOpenStore=/);
-  assert.match(source, /buildStoreProducts\(PRODUCTS, flow\.selectedStore\.stock\)/);
+  assert.match(source, /buildStoreProducts\(PRODUCTS, flow\.selectedStore\.stock, 3, flow\.selectedStore\.id\)/);
   assert.match(source, /initialSelectedStoreId=/);
 });
 
 test('the selected marker offset places it above a responsive bottom sheet', () => {
-  assert.deepEqual(getSelectedMarkerOffset(754, 400), [0, -103]);
-  assert.deepEqual(getSelectedMarkerOffset(448, 307), [0, -163]);
+  assert.deepEqual(getSelectedMarkerOffset(754, 400), [0, -61]);
+  assert.deepEqual(getSelectedMarkerOffset(754, 450), [0, -111]);
+  assert.deepEqual(getSelectedMarkerOffset(448, 307), [0, -121]);
 });
 
 test('the Kakao camera pans the selected marker above the sheet', () => {
-  assert.deepEqual(getKakaoSelectedPanOffset(754, 400), { x: 0, y: 103 });
-  assert.deepEqual(getKakaoSelectedPanOffset(448, 307), { x: 0, y: 163 });
+  assert.deepEqual(getKakaoSelectedPanOffset(754, 400), { x: 0, y: 61 });
+  assert.deepEqual(getKakaoSelectedPanOffset(448, 307), { x: 0, y: 121 });
 });
 
 test('the initial map viewport can fit all ten nearby stores', () => {
@@ -948,4 +1001,34 @@ test('the home tab uses the Figma outline-home artwork', () => {
   );
 
   assert.match(html, /nav-home-figma-mask\.png/);
+});
+
+test('bottom navigation slides below the viewport while a bottom sheet is open', async () => {
+  const hiddenNav = renderToStaticMarkup(
+    React.createElement(BottomNav, { active: 'store', onNav() {}, hidden: true }),
+  );
+  const mapWithStoreSheet = renderToStaticMarkup(
+    React.createElement(MapScreen, {
+      onNav() {},
+      onOpenProduct() {},
+      initialSelectedStoreId: 'chungmuro',
+    }),
+  );
+  const storeWithPickupSheet = renderToStaticMarkup(
+    React.createElement(StoreDetail, {
+      store: STORES[0],
+      products: [PRODUCTS[0]],
+      onNav() {},
+      onOrder() {},
+      bottomNavHidden: true,
+    }),
+  );
+  const styles = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8');
+
+  assert.match(hiddenNav, /class="bottomnav is-hidden"/);
+  assert.match(hiddenNav, /aria-hidden="true"/);
+  assert.match(mapWithStoreSheet, /class="bottomnav is-hidden"/);
+  assert.match(storeWithPickupSheet, /class="bottomnav is-hidden"/);
+  assert.match(styles, /\.bottomnav\.is-hidden\{[^}]*translateY\(100%\)[^}]*pointer-events:none/);
+  assert.match(styles, /#stage\[data-layout="document"\] \.bottomnav\.is-hidden\{[^}]*translate\(-50%,100%\)/);
 });
