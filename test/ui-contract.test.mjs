@@ -35,7 +35,7 @@ const {
   StoreNewsTabs,
   updateStoreNewsQueries,
 } = await vite.ssrLoadModule('/src/components/Screens.jsx');
-const { BarcodeCard, ConfirmDialog, PickupSheet } = await vite.ssrLoadModule('/src/components/Overlays.jsx');
+const { BarcodeCard, PickupSheet } = await vite.ssrLoadModule('/src/components/Overlays.jsx');
 const { CREW_TALKS, STORES, PRODUCTS, STORE_NEWS_TALKS } = await vite.ssrLoadModule('/src/data.js');
 const {
   FIXED_LOCATION,
@@ -43,10 +43,12 @@ const {
   distanceKm,
   formatDistance,
   filterCrewTalkItems,
+  resolveSheetSnap,
   selectNearestStores,
   toggleExpandedId,
   walkingMinutes,
 } = await vite.ssrLoadModule('/src/store-utils.js');
+const { createPickupFlowState, pickupFlowReducer } = await vite.ssrLoadModule('/src/pickup-flow.js');
 
 test('the app opens directly on the store screen', () => {
   const html = renderToStaticMarkup(React.createElement(App));
@@ -220,6 +222,78 @@ test('a generated store product list exposes at most three AI PICK labels', () =
   assert.equal(rows.filter((product) => product.badge === 'AI PICK').length, 3);
 });
 
+test('pickup flow skips 4-b and commits the selected store directly', () => {
+  const store = STORES[1];
+  const product = buildStoreProducts(PRODUCTS, store.stock)[0];
+  let state = createPickupFlowState();
+  state = pickupFlowReducer(state, { type: 'OPEN_STORE', store });
+  state = pickupFlowReducer(state, { type: 'OPEN_PICKUP', product });
+  state = pickupFlowReducer(state, { type: 'ADD_PICKUP_TO_CART' });
+
+  assert.equal(state.screen, '4');
+  assert.equal(state.overlay, 'added-toast');
+  assert.equal(state.cart[0].store.id, store.id);
+  assert.equal(state.cart[0].product.listKey, product.listKey);
+});
+
+test('pickup quantity is clamped to the remaining stock', () => {
+  const product = { ...PRODUCTS[0], stock: 3 };
+  let state = pickupFlowReducer(createPickupFlowState(), { type: 'OPEN_PICKUP', product });
+  state = pickupFlowReducer(state, { type: 'CHANGE_PICKUP_QTY', delta: 99 });
+  assert.equal(state.pickupDraft.qty, 3);
+  state = pickupFlowReducer(state, { type: 'CHANGE_PICKUP_QTY', delta: -99 });
+  assert.equal(state.pickupDraft.qty, 1);
+});
+
+test('pickup flow carries cart data through screens 5, 6, and 7', () => {
+  const store = STORES[0];
+  const product = buildStoreProducts(PRODUCTS, store.stock)[2];
+  let state = createPickupFlowState();
+  state = pickupFlowReducer(state, { type: 'OPEN_STORE', store });
+  state = pickupFlowReducer(state, { type: 'OPEN_PICKUP', product });
+  state = pickupFlowReducer(state, { type: 'ADD_PICKUP_TO_CART' });
+  state = pickupFlowReducer(state, { type: 'GO_TO_CART' });
+  assert.equal(state.screen, '6');
+  assert.equal(state.overlay, 'none');
+  state = pickupFlowReducer(state, { type: 'OPEN_BARCODE' });
+  assert.equal(state.overlay, 'barcode');
+  state = pickupFlowReducer(state, { type: 'CLOSE_OVERLAY' });
+  assert.equal(state.screen, '6');
+  assert.equal(state.overlay, 'none');
+  assert.equal(state.cart[0].store.id, store.id);
+});
+
+test('cart quantity changes stay within the selected product stock', () => {
+  const store = STORES[0];
+  const product = { ...PRODUCTS[0], stock: 3 };
+  let state = createPickupFlowState();
+  state = pickupFlowReducer(state, { type: 'OPEN_STORE', store });
+  state = pickupFlowReducer(state, { type: 'OPEN_PICKUP', product });
+  state = pickupFlowReducer(state, { type: 'ADD_PICKUP_TO_CART' });
+  state = pickupFlowReducer(state, { type: 'CHANGE_CART_QTY', index: 0, delta: 99 });
+  assert.equal(state.cart[0].qty, 3);
+  state = pickupFlowReducer(state, { type: 'CHANGE_CART_QTY', index: 0, delta: -99 });
+  assert.equal(state.cart[0].qty, 1);
+});
+
+test('pickup flow supports product navigation and a full restart', () => {
+  let state = pickupFlowReducer(createPickupFlowState(), { type: 'OPEN_PRODUCT', productId: 'p1' });
+  assert.equal(state.screen, 'product');
+  assert.equal(state.productId, 'p1');
+  state = pickupFlowReducer(state, { type: 'NAVIGATE', screen: '3b' });
+  assert.equal(state.screen, '3b');
+  state = pickupFlowReducer(state, { type: 'RESTART' });
+  assert.deepEqual(state, createPickupFlowState());
+});
+
+test('sheet release snaps on distance or flick velocity', () => {
+  assert.equal(resolveSheetSnap('collapsed', -60, -0.1), 'expanded');
+  assert.equal(resolveSheetSnap('collapsed', -8, -0.6), 'expanded');
+  assert.equal(resolveSheetSnap('expanded', 60, 0.1), 'collapsed');
+  assert.equal(resolveSheetSnap('expanded', 8, 0.6), 'collapsed');
+  assert.equal(resolveSheetSnap('collapsed', -8, -0.1), 'collapsed');
+});
+
 test('the selected store sheet renders one row per marker stock number', () => {
   const selectedStore = STORES.find((store) => store.id === 'chungmuro');
   const html = renderToStaticMarkup(
@@ -228,6 +302,7 @@ test('the selected store sheet renders one row per marker stock number', () => {
       sheetState: 'collapsed',
       onToggle() {},
       onOpenProduct() {},
+      onOpenStore() {},
     }),
   );
 
@@ -238,58 +313,57 @@ test('the selected store sheet renders one row per marker stock number', () => {
   assert.match(html, /12분 전/);
 });
 
-test('the store title opens the selected store without toggling the sheet', () => {
-  const selectedStore = STORES.find((store) => store.id === 'chungmuro');
-  let openedStore = null;
-  let toggleCount = 0;
-  const sheet = StoreSheet({
-    store: selectedStore,
-    sheetState: 'collapsed',
-    onToggle() { toggleCount += 1; },
-    onOpenStore(store) { openedStore = store; },
-    onOpenProduct() {},
-  });
-  const controls = sheet.props.children[0].props.children;
-  const storeTitleButton = controls.find((child) => child.props?.className === 'store-title');
-
-  assert.equal(storeTitleButton.type, 'button');
-  storeTitleButton.props.onClick();
-  assert.equal(openedStore, selectedStore);
-  assert.equal(toggleCount, 0);
-});
-
-test('the store sheet toggle exposes collapsed and expanded state', () => {
-  const selectedStore = STORES.find((store) => store.id === 'chungmuro');
-  const renderSheet = (sheetState) => renderToStaticMarkup(
-    React.createElement(StoreSheet, {
-      store: selectedStore,
-      sheetState,
-      onToggle() {},
-      onOpenStore() {},
-      onOpenProduct() {},
-    }),
-  );
-
-  assert.match(renderSheet('collapsed'), /aria-expanded="false"/);
-  assert.match(renderSheet('expanded'), /aria-expanded="true"/);
-});
-
-test('the store detail renders the selected store name', () => {
+test('the map sheet separates store navigation from its drag region', async () => {
   const selectedStore = STORES.find((store) => store.id === 'chungmuro');
   const html = renderToStaticMarkup(
-    React.createElement(StoreDetail, {
+    React.createElement(StoreSheet, {
       store: selectedStore,
-      onNav() {},
-      onOrder() {},
-      toastShown: false,
-      onGoCart() {},
+      sheetState: 'collapsed',
+      onToggle() {},
+      onOpenProduct() {},
+      onOpenStore() {},
     }),
   );
+  const source = await readFile(new URL('../src/components/MapScreen.jsx', import.meta.url), 'utf8');
+  const styles = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8');
 
-  assert.equal((html.match(/올리브영 충무로역점/g) ?? []).length, 2);
-  assert.doesNotMatch(html, /올리브영 명동 타운/);
-  assert.match(html, /서울특별시 중구 퇴계로 222/);
-  assert.doesNotMatch(html, /OLIVE YOUNG MYEONGDONG GLOBAL/);
+  assert.match(html, /aria-label="올리브영 충무로역점 상세 보기"/);
+  assert.match(html, /data-sheet-drag-region="true"/);
+  assert.match(html, /class="sheet-toggle"[^>]*data-sheet-drag-region="true"/);
+  assert.doesNotMatch(html, /class="sheet-head"[^>]*role="button"/);
+  assert.match(source, /onOpenStore\(store\)/);
+  assert.match(source, /initialSelectedStoreId/);
+  assert.match(source, /onMouseDown=/);
+  assert.match(source, /onTouchStart=/);
+  assert.match(styles, /\.sheet-toggle\{[^}]*height:28px/);
+});
+
+test('store detail and pickup sheet render the selected map store and identical rows', () => {
+  const store = STORES.find((item) => item.id === 'chungmuro');
+  const products = buildStoreProducts(PRODUCTS, store.stock);
+  const detail = renderToStaticMarkup(React.createElement(StoreDetail, {
+    store,
+    products,
+    onNav() {},
+    onOrder() {},
+    toastShown: false,
+    onDismissToast() {},
+    onGoCart() {},
+  }));
+  const sheet = renderToStaticMarkup(React.createElement(PickupSheet, {
+    store,
+    product: products[0],
+    qty: 1,
+    onMinus() {},
+    onPlus() {},
+    onClose() {},
+    onAddToCart() {},
+  }));
+
+  assert.match(detail, /올리브영 충무로역점/);
+  assert.equal((detail.match(/data-detail-product="true"/g) ?? []).length, store.stock);
+  assert.match(sheet, /올리브영 충무로역점/);
+  assert.match(sheet, /disabled=""/);
 });
 
 test('the store detail news button opens news for the selected store', () => {
@@ -384,31 +458,51 @@ test('notice and Crew Talk searches keep independent query values', () => {
   assert.deepEqual(crewQueries, { notice: '입고알림', crew: '브링그린' });
 });
 
-test('the selected store remains consistent through pickup, confirmation, cart, and barcode', () => {
-  const selectedStore = STORES.find((store) => store.id === 'chungmuro');
-  const product = PRODUCTS[0];
-  const pickupHtml = renderToStaticMarkup(
-    React.createElement(PickupSheet, { store: selectedStore, product, qty: 1 }),
-  );
-  const confirmHtml = renderToStaticMarkup(
-    React.createElement(ConfirmDialog, { store: selectedStore }),
-  );
-  const cartHtml = renderToStaticMarkup(
-    React.createElement(Cart, {
-      onNav() {},
-      cart: [{ store: selectedStore, product, qty: 1 }],
-      onQtyChange() {},
-      onPurchase() {},
-    }),
-  );
-  const barcodeHtml = renderToStaticMarkup(
-    React.createElement(BarcodeCard, { store: selectedStore, countdown: '1초' }),
-  );
+test('store detail renders expiry and package-damage labels as condition badges', () => {
+  const detail = renderToStaticMarkup(React.createElement(StoreDetail, {
+    store: STORES[0],
+    products: [PRODUCTS[0], PRODUCTS[1]],
+    onNav() {},
+    onOrder() {},
+    toastShown: false,
+    onDismissToast() {},
+    onGoCart() {},
+  }));
 
-  for (const html of [pickupHtml, confirmHtml, cartHtml, barcodeHtml]) {
-    assert.match(html, /올리브영 충무로역점/);
-    assert.doesNotMatch(html, /올리브영 명동 타운/);
-  }
+  assert.match(detail, /class="condition-badge">유통기한<\/span>/);
+  assert.match(detail, /class="condition-badge">패키지 파손<\/span>/);
+});
+
+test('cart and barcode render the committed pickup store', () => {
+  const store = { ...STORES.find((item) => item.id === 'chungmuro'), tel: '02-0000-0000' };
+  const cart = [{ store, product: PRODUCTS[0], qty: 2 }];
+  const cartHtml = renderToStaticMarkup(React.createElement(Cart, {
+    onNav() {},
+    cart,
+    store,
+    onQtyChange() {},
+    onPurchase() {},
+  }));
+  const barcodeHtml = renderToStaticMarkup(React.createElement(BarcodeCard, {
+    store,
+    countdown: '5시간 57분 20초 이내',
+    onClose() {},
+    onRestart() {},
+  }));
+
+  assert.match(cartHtml, /올리브영 충무로역점/);
+  assert.match(barcodeHtml, /올리브영 충무로역점/);
+  assert.match(barcodeHtml, /서울특별시 중구 퇴계로 222/);
+  assert.match(barcodeHtml, /02-0000-0000/);
+});
+
+test('App wires the direct pickup flow without the removed 4-b dialog', async () => {
+  const source = await readFile(new URL('../src/App.jsx', import.meta.url), 'utf8');
+
+  assert.doesNotMatch(source, /ConfirmDialog|confirmOpen|keepExisting|switchStore/);
+  assert.match(source, /onOpenStore=/);
+  assert.match(source, /buildStoreProducts\(PRODUCTS, flow\.selectedStore\.stock\)/);
+  assert.match(source, /initialSelectedStoreId=/);
 });
 
 test('the selected marker offset places it above a responsive bottom sheet', () => {
@@ -416,14 +510,15 @@ test('the selected marker offset places it above a responsive bottom sheet', () 
   assert.deepEqual(getSelectedMarkerOffset(448, 307), [0, -163]);
 });
 
-test('the selected camera zooms in enough for max bounds to allow the vertical offset', () => {
-  const selectedStore = STORES.find((store) => store.id === 'chungmuro');
-  assert.deepEqual(getSelectedCameraOptions(selectedStore, 754, 400), {
-    center: [126.9962525, 37.5615827],
-    offset: [0, -103],
-    zoom: 15.5,
-    duration: 450,
-  });
+test('the selected camera centers every store above the sheet', () => {
+  for (const store of STORES) {
+    assert.deepEqual(getSelectedCameraOptions(store, 754, 400), {
+      center: [store.lng, store.lat],
+      offset: [0, -103],
+      zoom: 15.5,
+      duration: 450,
+    });
+  }
 });
 
 test('the initial map viewport can fit all ten nearby stores', async () => {

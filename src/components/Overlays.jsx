@@ -19,9 +19,9 @@ export function PickupSheet({ store = MAIN_STORE, product, qty, onMinus, onPlus,
         <div className="stock">잔여재고 | {product.stock}개</div>
         <div className="qtyrow">
           <div className="qty-stepper">
-            <button onClick={onMinus}><img src="/icons/pickup-minus.svg" alt="-" /></button>
+            <button onClick={onMinus} disabled={qty <= 1}><img src="/icons/pickup-minus.svg" alt="-" /></button>
             <span className="val">{qty}</span>
-            <button onClick={onPlus}><img src="/icons/pickup-plus.svg" alt="+" /></button>
+            <button onClick={onPlus} disabled={qty >= product.stock}><img src="/icons/pickup-plus.svg" alt="+" /></button>
           </div>
           <div className="price">
             <span className="origp">{won(product.orig)}</span>
@@ -34,20 +34,6 @@ export function PickupSheet({ store = MAIN_STORE, product, qty, onMinus, onPlus,
         <span className="total">총 {won(product.price * qty)}</span>
       </div>
       <div className="cta"><button className="btn-black" style={{ width: '100%' }} onClick={onAddToCart}>픽업 장바구니</button></div>
-    </div>
-  );
-}
-
-export function ConfirmDialog({ store = MAIN_STORE, onKeep, onSwitch }) {
-  return (
-    <div className="confirm-card">
-      <h3>선택한 매장에서 픽업하시겠어요?</h3>
-      <p>픽업 장바구니에 다른 매장이 지정되어 있어요.<br />방금 선택한 매장에서 픽업하시겠어요?</p>
-      <div className="store-pill">{store.name}</div>
-      <div className="actions">
-        <button className="keep" onClick={onKeep}>기존 매장 유지</button>
-        <button className="switch" onClick={onSwitch}>이 매장 픽업</button>
-      </div>
     </div>
   );
 }
@@ -74,7 +60,7 @@ export function BarcodeCard({ store = MAIN_STORE, countdown, onClose, onRestart 
       <div className="storeinfo">
         <div className="nm">{store.name}</div>
         <div className="addr">{store.addr}</div>
-        <div className="tel">☎ {store.tel ?? MAIN_STORE.tel}</div>
+        <div className="tel">☎ {store.tel ?? '1577-4887'}</div>
         <div className="fans">1,105명이 관심매장으로 등록했습니다.</div>
       </div>
       <div className="close-btn" onClick={onRestart}>처음부터 다시 보기</div>

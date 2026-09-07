@@ -130,7 +130,16 @@ export function ProductPlaceholder({ product, onNav }) {
   );
 }
 
-export function StoreDetail({ store = MAIN_STORE, onNav, onOrder, onOpenNews, toastShown, onGoCart }) {
+export function StoreDetail({
+  store = MAIN_STORE,
+  products = PRODUCTS,
+  onNav,
+  onOrder,
+  onOpenNews,
+  toastShown,
+  onDismissToast,
+  onGoCart,
+}) {
   return (
     <section className="screen active" id="screen-4">
       <div className="screen-body">
@@ -153,20 +162,20 @@ export function StoreDetail({ store = MAIN_STORE, onNav, onOrder, onOpenNews, to
         <div className="store-actions"><button className="btn-outline">매장 상품 보기</button><button className="btn-outline" onClick={() => onOpenNews?.(store)}>매장 소식</button></div>
         <div className="store-tabs"><span>기본 정보</span><span>매장행사</span><span>인기 상품</span><span className="active">클리어런스</span></div>
         <div id="store-products">
-          {PRODUCTS.map((p) => (
-            <div className="pcard" key={p.id}>
+          {products.map((p) => (
+            <div className="pcard" key={p.listKey ?? p.id} data-detail-product="true">
               <div className="row">
                 <img className="prod" src={p.img} alt="" />
                 <div className="info">
                   <div className="nm">{p.name}</div>
                   <div className="subrow">
                     <span className="variant">{p.variant}</span>
-                    {p.badge2 && <span className="badge-gray" style={{ borderRadius: 10 }}>{p.badge2}</span>}
+                    {p.badge2 && <span className="condition-badge">{p.badge2}</span>}
                   </div>
                   <div className="stockpill">잔여재고 | {p.stock}개</div>
                   <div className="pricebar">
                     <span><span className="pct">{p.pct}%</span><span className="now">{won(p.price)}</span><span className="orig">{won(p.orig)}</span></span>
-                    <button className="order-btn" onClick={() => onOrder(p.id)}>픽업주문</button>
+                    <button className="order-btn" onClick={() => onOrder(p)}>픽업주문</button>
                   </div>
                 </div>
               </div>
@@ -177,9 +186,10 @@ export function StoreDetail({ store = MAIN_STORE, onNav, onOrder, onOpenNews, to
       </div>
       <BottomNav active="store" onNav={onNav} />
       {toastShown && (
-        <div className="toast">
+        <div className="toast" role="status">
           <span>나의 픽업 장바구니에 담았어요</span>
-          <a onClick={onGoCart}>장바구니로 이동</a>
+          <button type="button" className="toast-link" onClick={onGoCart}>장바구니로 이동</button>
+          <button type="button" className="toast-close" aria-label="알림 닫기" onClick={onDismissToast}>×</button>
         </div>
       )}
     </section>
@@ -319,10 +329,9 @@ export function StoreNews({ store = MAIN_STORE, tab = 'notice', onBack, onTabCha
   );
 }
 
-export function Cart({ onNav, cart, onQtyChange, onPurchase }) {
+export function Cart({ onNav, cart, store = MAIN_STORE, onQtyChange, onPurchase }) {
   const origSum = cart.reduce((s, e) => s + e.product.orig * e.qty, 0);
   const totalSum = cart.reduce((s, e) => s + e.product.price * e.qty, 0);
-  const pickupStore = cart[0]?.store ?? MAIN_STORE;
   return (
     <section className="screen active" id="screen-6">
       <div className="screen-body">
@@ -357,7 +366,7 @@ export function Cart({ onNav, cart, onQtyChange, onPurchase }) {
           <span className="note" style={{ marginLeft: 'auto' }}>실제 재고는 상이할 수 있습니다</span>
         </div>
         <div className="cart-store-select">
-          <div className="lft">픽업 매장 › <b>{pickupStore.name}</b></div>
+          <div className="lft">픽업 매장 › <b>{store.name}</b></div>
           <div className="chg">매장변경</div>
         </div>
         <div>
@@ -377,9 +386,9 @@ export function Cart({ onNav, cart, onQtyChange, onPurchase }) {
               <div className="optionbox">{entry.product.variant} <img src="/icons/cart-chevron.svg" alt="" /></div>
               <div className="qtyrow2">
                 <div className="qty-stepper">
-                  <button onClick={() => onQtyChange(idx, -1)}><img src="/icons/cart-minus.svg" alt="-" /></button>
+                  <button onClick={() => onQtyChange(idx, -1)} disabled={entry.qty <= 1}><img src="/icons/cart-minus.svg" alt="-" /></button>
                   <span className="val">{entry.qty}</span>
-                  <button onClick={() => onQtyChange(idx, 1)}><img src="/icons/cart-plus.svg" alt="+" /></button>
+                  <button onClick={() => onQtyChange(idx, 1)} disabled={entry.qty >= entry.product.stock}><img src="/icons/cart-plus.svg" alt="+" /></button>
                 </div>
                 <div className="price">
                   <span style={{ textDecoration: 'line-through', color: '#666', fontSize: 12 }}>{won(entry.product.orig)}</span>{' '}

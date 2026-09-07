@@ -170,21 +170,23 @@ a{color:inherit;text-decoration:none}
 .ai-banner .x img{width:12px;height:12px}
 .search-here{position:absolute;left:50%;bottom:28px;transform:translateX(-50%);background:#fff;border:1px solid #e5e7eb;border-radius:999px;padding:10px 20px;font-size:14px;font-weight:700;box-shadow:0 10px 8px rgba(0,0,0,.1),0 4px 4px rgba(0,0,0,.1);z-index:4;white-space:nowrap;display:flex;align-items:center;gap:8px}
 .search-here img{width:15px;height:15px}
-.map-marker{position:relative;display:block;padding:0;background:none;color:#000;white-space:nowrap;cursor:pointer;overflow:visible}
-.map-marker-label{display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid #fff;border-radius:30px;padding:7px 10px;font-size:14px;line-height:normal;font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,.2)}
-.map-marker-badge{position:absolute;right:0;top:-8px;display:flex;align-items:center;justify-content:center;width:18px;height:18px;padding:3px;background:#fff;border:.8px solid #a5a5a5;border-radius:9px;color:#404040;font-size:9.519px;line-height:1;font-weight:600;letter-spacing:-.76px}
+.map-marker{position:absolute;display:block;padding:0;background:none;color:#000;white-space:nowrap;cursor:pointer;overflow:visible}
+.map-marker-label{display:flex;align-items:center;justify-content:center;background:#fff;border:1.4px solid #fff;border-radius:30px;padding:8px 10px;font-size:14px;line-height:normal;font-weight:700;box-shadow:0 2px 3px rgba(0,0,0,.25)}
+.map-marker-badge{position:absolute;right:-2px;top:-9px;display:flex;align-items:center;justify-content:center;width:18px;height:18px;padding:3px;background:#fff;border:1.038px solid #a5a5a5;border-radius:9px;color:#404040;font-size:9.519px;line-height:1;font-weight:600;letter-spacing:-.7615px}
 .map-marker.ai .map-marker-label{border-color:var(--ai-green)}
 .map-marker.ai .map-marker-badge{background:var(--ai-green);border-color:var(--ai-green)}
-.map-marker.selected{z-index:2}
+.map-marker.selected{z-index:20}
 .map-marker.selected .map-marker-label{background:#222;border-color:var(--ai-green);color:#fff}
 .map-marker.selected .map-marker-badge{background:var(--ai-green);border-color:var(--ai-green);color:#222}
 
-.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:10px 10px 0 0;box-shadow:0 -4px 12px rgba(0,0,0,.15);transition:height .28s ease;overflow:hidden;z-index:600;display:none}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:10px 10px 0 0;box-shadow:0 -4px 12px rgba(0,0,0,.15);transition:height .2s cubic-bezier(.22,1,.36,1);overflow:hidden;z-index:600;display:none}
 .sheet.show{display:block}
+.sheet.dragging{transition:none}
 .sheet.collapsed{height:clamp(300px,50%,400px)}
 .sheet.expanded{height:calc(100% - 57px)}
-.sheet-head{height:55px;width:100%;position:relative;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.sheet-toggle{position:absolute;inset:0;width:100%;border:0;background:transparent;cursor:pointer}
+.sheet-head{height:55px;width:100%;position:relative;display:flex;align-items:center;justify-content:center;flex-shrink:0;user-select:none}
+.sheet-toggle{position:absolute;left:0;right:0;top:0;width:100%;height:28px;border:0;background:transparent;cursor:grab;touch-action:none}
+.sheet.dragging .sheet-toggle{cursor:grabbing}
 .sheet-handle{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:46px;height:4px;border-radius:20px;background:#868686;opacity:.8}
 .sheet-head .store-title{position:relative;z-index:1;border:0;background:transparent;padding:0;font:inherit;font-size:17px;font-weight:600;margin-top:14px;display:flex;align-items:center;gap:6px;cursor:pointer}
 .sheet-head .store-title img{width:8px;height:14px}
@@ -264,6 +266,7 @@ a{color:inherit;text-decoration:none}
 .pcard .nm{font-size:13px;color:#101828;font-weight:500;line-height:1.4}
 .pcard .subrow{display:flex;gap:4px;align-items:center;margin-top:4px;flex-wrap:wrap}
 .pcard .variant{font-size:12px;color:#b6b6b6}
+.pcard .condition-badge{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;padding:4px;border:1px solid #cacaca;border-radius:10px;background:#a6a6a6;color:#fff;font-size:8px;font-weight:700;line-height:normal;letter-spacing:-.16px;white-space:nowrap}
 .pcard .stockpill{font-size:11px;color:var(--red);background:#fff;border-radius:50px;margin-top:6px;display:inline-block}
 .pcard .pricebar{display:flex;justify-content:space-between;align-items:flex-end;margin-top:8px}
 .pcard .pct{color:var(--red);font-weight:700;font-size:16px}
@@ -275,7 +278,8 @@ a{color:inherit;text-decoration:none}
 
 /* ---------- toast ---------- */
 .toast{position:absolute;left:50%;bottom:96px;transform:translateX(-50%);background:rgba(34,34,34,.9);color:#fff;border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:14px;font-size:14px;box-shadow:0 20px 25px rgba(0,0,0,.25);z-index:900;white-space:nowrap}
-.toast a{color:#4af12d;font-weight:700;font-size:13px;cursor:pointer}
+.toast-link{color:#4af12d;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap}
+.toast-close{color:#fff;font-size:18px;line-height:1;opacity:.7;cursor:pointer}
 
 /* ---------- store news (screens 3.5-a / 3.5-b) ---------- */
 .store-news-screen{color:#222}
@@ -336,15 +340,6 @@ a{color:inherit;text-decoration:none}
 .pickup-sheet .summary .lbl b{font-weight:700}
 .pickup-sheet .summary .total{font-size:16px;font-weight:700}
 .pickup-sheet .cta{border-top:1px solid #f3f4f6;padding:17px 20px}
-
-.confirm-card{position:absolute;left:24px;right:24px;top:50%;transform:translateY(-50%);background:#fff;border-radius:10px;padding:20px;z-index:850;box-shadow:0 25px 25px rgba(0,0,0,.3)}
-.confirm-card h3{font-size:17px;font-weight:700}
-.confirm-card p{font-size:14px;color:#222;margin-top:8px;line-height:1.4}
-.confirm-card .store-pill{background:#f3f4f6;border-radius:12px;padding:14px;text-align:center;font-weight:700;font-size:15px;margin-top:16px}
-.confirm-card .actions{display:flex;gap:12px;margin-top:16px}
-.confirm-card .actions button{flex:1;height:52px;border-radius:10px;font-size:15px;font-weight:700}
-.confirm-card .actions .keep{border:1px solid #e6e6e6;color:#666}
-.confirm-card .actions .switch{background:#222;color:#fff}
 
 /* ---------- cart screen ---------- */
 .cart-topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 16px 10px}

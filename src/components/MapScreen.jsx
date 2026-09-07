@@ -2,7 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { CREW_TALKS, STORES, PRODUCTS, won } from '../data.js';
-import { FIXED_LOCATION, buildStoreProducts, filterCrewTalkItems, selectNearestStores, toggleExpandedId } from '../store-utils.js';
+import {
+  FIXED_LOCATION,
+  buildStoreProducts,
+  filterCrewTalkItems,
+  resolveSheetSnap,
+  selectNearestStores,
+  toggleExpandedId,
+} from '../store-utils.js';
 import BottomNav from './BottomNav.jsx';
 
 export { selectNearestStores } from '../store-utils.js';
@@ -85,22 +92,118 @@ function makePinElement(store, selected, onClick) {
   return marker;
 }
 
-export function StoreSheet({ store, sheetState, onToggle, onOpenStore, onOpenProduct, sheetRef }) {
+export function StoreSheet({ store, sheetState, onToggle, onOpenProduct, onOpenStore, sheetRef }) {
   const storeProducts = buildStoreProducts(PRODUCTS, store.stock);
+  const dragRef = useRef(null);
+  const mouseCleanupRef = useRef(() => {});
+  const [dragHeight, setDragHeight] = useState(null);
+  const [dragging, setDragging] = useState(false);
+
+  useEffect(() => () => mouseCleanupRef.current(), []);
+
+  function toggleSheet() {
+    onToggle(sheetState === 'collapsed' ? 'expanded' : 'collapsed');
+  }
+
+  function beginDrag(clientY) {
+    const sheet = sheetRef?.current;
+    if (!sheet) return;
+    const stageHeight = sheet.parentElement?.clientHeight ?? window.innerHeight;
+    dragRef.current = {
+      startY: clientY,
+      startTime: performance.now(),
+      startHeight: sheet.getBoundingClientRect().height,
+      minHeight: Math.min(400, Math.max(300, stageHeight * 0.5)),
+      maxHeight: Math.max(300, stageHeight - 57),
+    };
+    setDragging(true);
+  }
+
+  function moveDrag(clientY) {
+    const drag = dragRef.current;
+    if (!drag) return;
+    const deltaY = clientY - drag.startY;
+    setDragHeight(Math.min(drag.maxHeight, Math.max(drag.minHeight, drag.startHeight - deltaY)));
+  }
+
+  function finishDrag(clientY) {
+    const drag = dragRef.current;
+    if (!drag) return;
+    const deltaY = clientY - drag.startY;
+    const elapsed = Math.max(1, performance.now() - drag.startTime);
+    const velocityY = deltaY / elapsed;
+    const wasTap = Math.abs(deltaY) < 6;
+    dragRef.current = null;
+    setDragging(false);
+    setDragHeight(null);
+    if (wasTap) toggleSheet();
+    else onToggle(resolveSheetSnap(sheetState, deltaY, velocityY));
+  }
+
+  function handleMouseDown(event) {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    beginDrag(event.clientY);
+    const handleMouseMove = (moveEvent) => moveDrag(moveEvent.clientY);
+    const handleMouseUp = (upEvent) => {
+      finishDrag(upEvent.clientY);
+      mouseCleanupRef.current();
+    };
+    mouseCleanupRef.current = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      mouseCleanupRef.current = () => {};
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }
+
+  function handleTouchStart(event) {
+    const touch = event.touches[0];
+    if (touch) beginDrag(touch.clientY);
+  }
+
+  function handleTouchMove(event) {
+    const touch = event.touches[0];
+    if (touch) moveDrag(touch.clientY);
+  }
+
+  function handleTouchEnd(event) {
+    const touch = event.changedTouches[0];
+    if (touch) finishDrag(touch.clientY);
+  }
 
   return (
-    <div className={'sheet show ' + sheetState} ref={sheetRef}>
+    <div
+      className={'sheet show ' + sheetState + (dragging ? ' dragging' : '')}
+      ref={sheetRef}
+      style={dragHeight == null ? undefined : { height: `${dragHeight}px` }}
+    >
       <div className="sheet-head">
         <button
           type="button"
           className="sheet-toggle"
-          onClick={onToggle}
-          aria-expanded={sheetState === 'expanded'}
-          aria-label={sheetState === 'expanded' ? '바텀시트 접기' : '바텀시트 펼치기'}
+          data-sheet-drag-region="true"
+          aria-label={sheetState === 'collapsed' ? '매장 상품 목록 펼치기' : '매장 상품 목록 접기'}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              toggleSheet();
+            }
+          }}
+          onMouseDown={handleMouseDown}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
         >
           <span className="sheet-handle" />
         </button>
-        <button type="button" className="store-title" onClick={() => onOpenStore(store)} aria-label={`${store.name} 상세 보기`}>
+        <button
+          type="button"
+          className="store-title"
+          aria-label={`${store.name} 상세 보기`}
+          onClick={() => onOpenStore(store)}
+        >
           {store.name} <img src="/icons/map-link.svg" alt="" />
         </button>
       </div>
@@ -207,7 +310,7 @@ export function CrewTalkSheet({ items, query, expandedTalkIds, onQueryChange, on
   );
 }
 
-export default function MapScreen({ onNav, onOpenProduct, onOpenStore }) {
+export default function MapScreen({ onNav, onOpenProduct, onOpenStore, initialSelectedStoreId = null }) {
   const mapDivRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef([]);
@@ -217,8 +320,8 @@ export default function MapScreen({ onNav, onOpenProduct, onOpenStore }) {
   const [visibleStores, setVisibleStores] = useState(() => selectNearestStores(STORES, CENTER));
   const [showAiBanner, setShowAiBanner] = useState(true);
   const [showSearchButton, setShowSearchButton] = useState(true);
-  const [selectedId, setSelectedId] = useState(null);
-  const [sheetState, setSheetState] = useState('closed');
+  const [selectedId, setSelectedId] = useState(initialSelectedStoreId);
+  const [sheetState, setSheetState] = useState(initialSelectedStoreId ? 'collapsed' : 'closed');
   const [crewTalkOpen, setCrewTalkOpen] = useState(false);
   const [crewTalkQuery, setCrewTalkQuery] = useState('');
   const [expandedTalkIds, setExpandedTalkIds] = useState([]);
@@ -307,7 +410,7 @@ export default function MapScreen({ onNav, onOpenProduct, onOpenStore }) {
     });
 
     return () => cancelAnimationFrame(animationFrame);
-  }, [selectedStore]);
+  }, [selectedStore, sheetState]);
 
   function searchThisArea() {
     const center = mapRef.current?.getCenter();
@@ -365,9 +468,9 @@ export default function MapScreen({ onNav, onOpenProduct, onOpenStore }) {
           store={selectedStore}
           sheetState={sheetState}
           sheetRef={sheetRef}
-          onToggle={() => setSheetState(sheetState === 'collapsed' ? 'expanded' : 'collapsed')}
-          onOpenStore={onOpenStore}
+          onToggle={setSheetState}
           onOpenProduct={onOpenProduct}
+          onOpenStore={onOpenStore}
         />}
         {crewTalkOpen && (
           <CrewTalkSheet

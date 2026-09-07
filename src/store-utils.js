@@ -61,6 +61,15 @@ export function toggleExpandedId(expandedIds, id) {
     : [...expandedIds, id];
 }
 
+export function resolveSheetSnap(currentState, deltaY, velocityY) {
+  const distanceThreshold = 48;
+  const velocityThreshold = 0.45;
+
+  if (deltaY <= -distanceThreshold || velocityY <= -velocityThreshold) return 'expanded';
+  if (deltaY >= distanceThreshold || velocityY >= velocityThreshold) return 'collapsed';
+  return currentState;
+}
+
 export function filterCrewTalkItems(items, query) {
   const normalizedQuery = query.trim().toLocaleLowerCase('ko-KR');
   if (!normalizedQuery) return items;
