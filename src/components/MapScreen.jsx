@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { CREW_TALKS, STORES, PRODUCTS, won } from '../data.js';
 import {
   FIXED_LOCATION,
-  buildStoreProducts,
+  buildStoreProductsForStore,
   filterCrewTalkItems,
   resolveSheetSnap,
   selectNearestStores,
@@ -197,7 +197,7 @@ function useSheetGesture(sheetRef, sheetState, onToggle, exactHalf = false) {
 }
 
 export function StoreSheet({ store, sheetState, onToggle, onOpenProduct, onOpenStore, onOpenNews, sheetRef }) {
-  const storeProducts = buildStoreProducts(PRODUCTS, store.stock, 3, store.id);
+  const storeProducts = buildStoreProductsForStore(PRODUCTS, store);
   const gesture = useSheetGesture(sheetRef, sheetState, onToggle);
 
   return (

@@ -3,7 +3,7 @@ import { StoreHome, ProductDetail, StoreDetail, StoreNews, Cart } from './compon
 import MapScreen from './components/MapScreen.jsx';
 import { Dim, PickupSheet, BarcodeCard } from './components/Overlays.jsx';
 import { PRODUCTS, STORES } from './data.js';
-import { buildStoreProducts } from './store-utils.js';
+import { buildStoreProductsForStore } from './store-utils.js';
 import { createPickupFlowState, pickupFlowReducer } from './pickup-flow.js';
 
 export default function App() {
@@ -49,7 +49,7 @@ export default function App() {
 
   const productStore = flow.selectedStore ?? STORES.find((store) => store.id === 'chungmuro');
   const selectedStoreProducts = flow.selectedStore
-    ? buildStoreProducts(PRODUCTS, flow.selectedStore.stock, 3, flow.selectedStore.id)
+    ? buildStoreProductsForStore(PRODUCTS, flow.selectedStore)
     : [];
   const productObj = selectedStoreProducts.find((product) => product.id === flow.productId)
     ?? PRODUCTS.find((product) => product.id === flow.productId);

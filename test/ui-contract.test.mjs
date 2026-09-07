@@ -50,6 +50,7 @@ const { CREW_TALKS, STORES, PRODUCTS, STORE_NEWS_TALKS, STORE_NOTICES, getStoreN
 const {
   FIXED_LOCATION,
   buildStoreProducts,
+  buildStoreProductsForStore,
   distanceKm,
   filterStoreCrewTalks,
   filterStoreNotices,
@@ -435,6 +436,7 @@ test('the CJ training center store appears first at the fixed Pildong address', 
     lat: 37.559175,
     lng: 126.995635,
     stock: 2,
+    ai: true,
   }]);
 });
 
@@ -488,6 +490,20 @@ test('product Crew Talk cards are distributed through the store list', () => {
 test('a generated store product list exposes at most three AI PICK labels', () => {
   const rows = buildStoreProducts(PRODUCTS, 32);
   assert.equal(rows.filter((product) => product.badge === 'AI PICK').length, 3);
+});
+
+test('only AI PICK stores expose AI PICK products throughout the store flow', () => {
+  assert.equal(typeof buildStoreProductsForStore, 'function');
+  if (!buildStoreProductsForStore) return;
+
+  const aiStore = STORES.find((store) => store.id === 'cj-training-center');
+  const standardStore = STORES.find((store) => store.id === 'jungang');
+  const aiRows = buildStoreProductsForStore(PRODUCTS, aiStore);
+  const standardRows = buildStoreProductsForStore(PRODUCTS, standardStore);
+
+  assert.equal(aiStore.ai, true);
+  assert.equal(aiRows.filter((product) => product.badge === 'AI PICK').length, 2);
+  assert.equal(standardRows.some((product) => product.badge === 'AI PICK'), false);
 });
 
 test('condition badges are evenly and deterministically distributed per store', () => {
@@ -603,6 +619,16 @@ test('the map dim spotlight stays fixed when a store is selected', async () => {
   assert.match(html, /class="map-dim-art"/);
   assert.doesNotMatch(html, /map-dim-art selected-store/);
   assert.doesNotMatch(styles, /\.map-dim-art\.selected-store/);
+});
+
+test('only selected AI PICK markers use the dark green-highlighted state', async () => {
+  const styles = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8');
+
+  assert.match(styles, /\.map-marker\.ai \.map-marker-label\{[^}]*border-width:2px/);
+  assert.match(styles, /\.map-marker\.ai\.selected \.map-marker-label\{[^}]*background:#222[^}]*border-color:var\(--ai-green\)[^}]*color:#fff/);
+  assert.match(styles, /\.map-marker\.ai\.selected \.map-marker-badge\{[^}]*background:var\(--ai-green\)/);
+  assert.doesNotMatch(styles, /\.map-marker\.selected \.map-marker-label\{[^}]*background:#222/);
+  assert.doesNotMatch(styles, /\.map-marker\.selected \.map-marker-badge\{[^}]*background:var\(--ai-green\)/);
 });
 
 test('expandable Crew Talk keeps its message in the accessible name', () => {
@@ -965,6 +991,13 @@ test('store detail renders expiry and package-damage labels as condition badges'
   assert.match(detail, /class="condition-badge">패키지 파손<\/span>/);
 });
 
+test('AI PICK and condition badges share the Figma badge metrics', async () => {
+  const styles = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8');
+
+  assert.match(styles, /\.badge-ai,\.condition-badge,\.crew-item \.badge-gray\{[^}]*font-size:8px[^}]*padding:3px 4px[^}]*border-radius:10px/);
+  assert.doesNotMatch(styles, /\.pcard \.condition-badge\{/);
+});
+
 test('cart and barcode render the committed pickup store', () => {
   const store = { ...STORES.find((item) => item.id === 'chungmuro'), tel: '02-0000-0000' };
   const cart = [{ store, product: PRODUCTS[0], qty: 2 }];
@@ -1000,7 +1033,7 @@ test('App wires the direct pickup flow without the removed 4-b dialog', async ()
 
   assert.doesNotMatch(source, /ConfirmDialog|confirmOpen|keepExisting|switchStore/);
   assert.match(source, /onOpenStore=/);
-  assert.match(source, /buildStoreProducts\(PRODUCTS, flow\.selectedStore\.stock, 3, flow\.selectedStore\.id\)/);
+  assert.match(source, /buildStoreProductsForStore\(PRODUCTS, flow\.selectedStore\)/);
   assert.match(source, /initialSelectedStoreId=/);
 });
 

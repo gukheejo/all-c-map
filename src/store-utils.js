@@ -82,6 +82,11 @@ export function buildStoreProducts(products, count, aiLimit = 3, storeId) {
   });
 }
 
+export function buildStoreProductsForStore(products, store, aiLimit = 3) {
+  if (!store) return [];
+  return buildStoreProducts(products, store.stock, store.ai ? aiLimit : 0, store.id);
+}
+
 export function toggleExpandedId(expandedIds, id) {
   return expandedIds.includes(id)
     ? expandedIds.filter((expandedId) => expandedId !== id)
