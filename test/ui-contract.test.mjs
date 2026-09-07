@@ -305,6 +305,21 @@ test('store detail and pickup sheet render the selected map store and identical 
   assert.match(sheet, /disabled=""/);
 });
 
+test('store detail renders expiry and package-damage labels as condition badges', () => {
+  const detail = renderToStaticMarkup(React.createElement(StoreDetail, {
+    store: STORES[0],
+    products: [PRODUCTS[0], PRODUCTS[1]],
+    onNav() {},
+    onOrder() {},
+    toastShown: false,
+    onDismissToast() {},
+    onGoCart() {},
+  }));
+
+  assert.match(detail, /class="condition-badge">유통기한<\/span>/);
+  assert.match(detail, /class="condition-badge">패키지 파손<\/span>/);
+});
+
 test('cart and barcode render the committed pickup store', () => {
   const store = { ...STORES.find((item) => item.id === 'chungmuro'), tel: '02-0000-0000' };
   const cart = [{ store, product: PRODUCTS[0], qty: 2 }];

@@ -169,7 +169,7 @@ export function StoreDetail({
                   <div className="nm">{p.name}</div>
                   <div className="subrow">
                     <span className="variant">{p.variant}</span>
-                    {p.badge2 && <span className="badge-gray" style={{ borderRadius: 10 }}>{p.badge2}</span>}
+                    {p.badge2 && <span className="condition-badge">{p.badge2}</span>}
                   </div>
                   <div className="stockpill">잔여재고 | {p.stock}개</div>
                   <div className="pricebar">
