@@ -1,8 +1,8 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
-import { StoreHome, ProductPlaceholder, StoreDetail, StoreNews, Cart } from './components/Screens.jsx';
+import { StoreHome, ProductDetail, StoreDetail, StoreNews, Cart } from './components/Screens.jsx';
 import MapScreen from './components/MapScreen.jsx';
 import { Dim, PickupSheet, BarcodeCard } from './components/Overlays.jsx';
-import { PRODUCTS } from './data.js';
+import { PRODUCTS, STORES } from './data.js';
 import { buildStoreProducts } from './store-utils.js';
 import { createPickupFlowState, pickupFlowReducer } from './pickup-flow.js';
 
@@ -17,8 +17,8 @@ export default function App() {
     dispatch({ type: 'NAVIGATE', screen: id });
   }
 
-  function openProduct(id) {
-    dispatch({ type: 'OPEN_PRODUCT', productId: id });
+  function openProduct(id, store, returnScreen = flow.screen) {
+    dispatch({ type: 'OPEN_PRODUCT', productId: id, store, returnScreen });
   }
 
   function purchase() {
@@ -48,6 +48,7 @@ export default function App() {
   }
 
   const productObj = PRODUCTS.find((product) => product.id === flow.productId);
+  const productStore = flow.selectedStore ?? STORES.find((store) => store.id === 'chungmuro');
   const selectedStoreProducts = flow.selectedStore
     ? buildStoreProducts(PRODUCTS, flow.selectedStore.stock)
     : [];
@@ -56,22 +57,44 @@ export default function App() {
 
   return (
       <div id="stage">
-        {flow.screen === '2' && <StoreHome onNav={goNav} />}
+        {flow.screen === '2' && (
+          <StoreHome
+            onNav={(id) => {
+              if (id === '3b') dispatch({ type: 'ENTER_MAP' });
+              else goNav(id);
+            }}
+            onOpenProduct={(id) => openProduct(
+              id,
+              STORES.find((store) => store.id === 'chungmuro'),
+              '2',
+            )}
+          />
+        )}
         {flow.screen === '3b' && (
           <MapScreen
             onNav={goNav}
-            onOpenProduct={openProduct}
+            onOpenProduct={(id, store) => openProduct(id, store, '3b')}
             onOpenStore={(store) => dispatch({ type: 'OPEN_STORE', store })}
+            onOpenNews={(store) => dispatch({ type: 'OPEN_STORE_NEWS', store })}
             initialSelectedStoreId={flow.selectedStore?.id}
           />
         )}
-        {flow.screen === 'product' && <ProductPlaceholder product={productObj} onNav={goNav} />}
+        {flow.screen === 'product' && (
+          <ProductDetail
+            product={productObj}
+            store={productStore}
+            onBack={() => goNav(flow.productReturnScreen)}
+            onOrder={(product) => dispatch({ type: 'OPEN_PICKUP', product })}
+            onNav={goNav}
+          />
+        )}
         {flow.screen === '4' && flow.selectedStore && (
           <StoreDetail
             store={flow.selectedStore}
             products={selectedStoreProducts}
             onNav={goNav}
             onOrder={(product) => dispatch({ type: 'OPEN_PICKUP', product })}
+            onOpenProduct={(id) => openProduct(id, flow.selectedStore, '4')}
             onOpenNews={() => dispatch({ type: 'NAVIGATE', screen: '3.5a' })}
             toastShown={flow.overlay === 'added-toast'}
             onDismissToast={() => dispatch({ type: 'CLOSE_OVERLAY' })}
@@ -87,6 +110,7 @@ export default function App() {
               type: 'NAVIGATE',
               screen: tab === 'crew' ? '3.5b' : '3.5a',
             })}
+            onOpenProduct={(id, store) => openProduct(id, store, '3.5b')}
             onNav={goNav}
           />
         )}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import BottomNav from './BottomNav.jsx';
 import { loadKakaoMaps } from '../kakao-map.js';
-import { PRODUCTS, STORES, STORE_NEWS_TALKS, STORE_NOTICES, won, MAIN_STORE } from '../data.js';
+import { PRODUCTS, STORES, getStoreNewsForStore, won, MAIN_STORE } from '../data.js';
 import {
   FIXED_LOCATION,
   distanceKm,
@@ -87,7 +87,7 @@ export function KakaoStorePreviewMap({ store }) {
   );
 }
 
-export function StoreHome({ onNav }) {
+export function StoreHome({ onNav, onOpenProduct }) {
   const [expandedTalkIds, setExpandedTalkIds] = useState([]);
   const nearbyStores = selectNearestStores(STORES, FIXED_LOCATION, 2);
   const nearestStore = nearbyStores[0];
@@ -125,16 +125,37 @@ export function StoreHome({ onNav }) {
         <section className="store-recommendations">
           <h2 className="reco-title">정열창님,<br />도보 <b>{walkingMinutes(nearestDistance)}</b>분 거리에서 득템해보세요!</h2>
           <span className="sr-only">{FIXED_LOCATION.address}</span>
-          <KakaoStorePreviewMap store={nearestStore} />
+          <div className="reco-map-entry">
+            <KakaoStorePreviewMap store={nearestStore} />
+            <button
+              type="button"
+              className="reco-map-link"
+              aria-label="올클맵 지도 미리보기 열기"
+              onClick={() => onNav('3b')}
+            />
+          </div>
 
           <div className="reco-list">
             {recommendations.map(({ label, product }) => (
               <article className="reco-item" key={product.id}>
                 <div className="lbl">{label}</div>
                 <div className="row">
-                  <img className="prod" src={product.img} alt="" />
+                  <button
+                    type="button"
+                    className="reco-product-image-link"
+                    aria-label={`${product.name} 상품 상세 보기`}
+                    onClick={() => onOpenProduct?.(product.id)}
+                  >
+                    <img className="prod" src={product.img} alt="" />
+                  </button>
                   <div className="reco-product-info">
-                    <div className="name">{product.name}</div>
+                    <button
+                      type="button"
+                      className="name reco-product-name-link"
+                      onClick={() => onOpenProduct?.(product.id)}
+                    >
+                      {product.name}
+                    </button>
                     <div className="reco-meta"><span className="sub">{product.variant}</span><span className="stock">잔여 재고 {product.stock}개</span></div>
                     {product.talk && (
                       <ExpandableCrewTalk
@@ -181,29 +202,66 @@ export function StoreHome({ onNav }) {
   );
 }
 
-export function ProductPlaceholder({ product, onNav }) {
+export function ProductDetail({ product, store = MAIN_STORE, onBack, onOrder, onNav = () => {} }) {
   if (!product) return null;
   return (
     <section className="screen active" id="screen-product">
-      <div className="topbar">
-        <button className="back" onClick={() => onNav('3b')}><img src="/icons/map-back.svg" alt="back" /></button>
-        <h1>상품 상세</h1>
+      <div className="screen-body product-detail-body">
+        <div className="topbar product-detail-topbar">
+          <button type="button" className="back" onClick={onBack} aria-label="이전 화면으로 돌아가기">
+            <img src="/icons/map-back.svg" alt="" />
+          </button>
+          <div className="product-detail-actions" aria-hidden="true">
+            <img src="/icons/store-search.svg" alt="" />
+            <img src="/icons/store-bag.png" alt="" />
+          </div>
+        </div>
+        <div className="product-detail-hero">
+          <img src={product.img} alt={product.name} />
+          <span className="product-image-count">‹ &nbsp; 1&nbsp; | &nbsp;1 &nbsp;›</span>
+        </div>
+        <div className="product-detail-copy">
+          <div className="product-brand-row">
+            <strong>{product.brand}</strong>
+            <span aria-hidden="true">♡</span>
+          </div>
+          <h1>{product.name}</h1>
+          <p className="product-detail-variant">{product.variant}</p>
+          <div className="product-detail-price">
+            <del>{won(product.orig)}</del>
+            <p><strong>{product.pct}%</strong> <b>{won(product.price)}</b></p>
+          </div>
+          <div className="product-condition-row">
+            {product.badge2 && <span className="condition-badge">{product.badge2}</span>}
+            <span className="product-stock">잔여재고 | {product.stock}개</span>
+          </div>
+          <section className="product-detail-summary">
+            <h2>상품 설명</h2>
+            <p>{product.summary}</p>
+          </section>
+          <section className="product-pickup-store">
+            <span>픽업 가능 매장</span>
+            <strong>{store.name}</strong>
+          </section>
+        </div>
       </div>
-      <div className="placeholder-body">
-        <img className="prod" src={product.img} alt="" />
-        <h2>{product.name}</h2>
-        <p>올클맵에서 제품을 클릭하면 기존 올리브영 제품상세 페이지로 연결됩니다. (이 데모에서는 별도 구현 범위 밖이라 placeholder만 표시)</p>
-        <button className="btn-outline" style={{ width: 160 }} onClick={() => onNav('3b')}>지도로 돌아가기</button>
+      <div className="product-detail-orderbar">
+        <button type="button" className="product-heart" aria-label="좋아요">♡</button>
+        <button type="button" className="btn-black" onClick={() => onOrder(product)}>픽업주문</button>
       </div>
+      <BottomNav active="store" onNav={onNav} />
     </section>
   );
 }
+
+export const ProductPlaceholder = ProductDetail;
 
 export function StoreDetail({
   store = MAIN_STORE,
   products = PRODUCTS,
   onNav,
   onOrder,
+  onOpenProduct,
   onOpenNews,
   toastShown,
   onDismissToast,
@@ -234,9 +292,11 @@ export function StoreDetail({
           {products.map((p) => (
             <div className="pcard" key={p.listKey ?? p.id} data-detail-product="true">
               <div className="row">
-                <img className="prod" src={p.img} alt="" />
+                <button type="button" className="pcard-product-link" onClick={() => onOpenProduct?.(p.id)}>
+                  <img className="prod" src={p.img} alt="" />
+                </button>
                 <div className="info">
-                  <div className="nm">{p.name}</div>
+                  <button type="button" className="nm pcard-name-link" onClick={() => onOpenProduct?.(p.id)}>{p.name}</button>
                   <div className="subrow">
                     <span className="variant">{p.variant}</span>
                     {p.badge2 && <span className="condition-badge">{p.badge2}</span>}
@@ -270,7 +330,7 @@ export function StoreDetail({
   );
 }
 
-export function StoreNewsTabs({ tab, onTabChange }) {
+export function StoreNewsTabs({ tab, onTabChange, noticeCount = 5, crewTalkCount = 11 }) {
   const isNotice = tab === 'notice';
   function handleKeyDown(event) {
     let nextTab = null;
@@ -296,7 +356,7 @@ export function StoreNewsTabs({ tab, onTabChange }) {
         onClick={() => onTabChange('notice')}
         onKeyDown={handleKeyDown}
       >
-        공지(5)
+        공지({noticeCount})
       </button>
       <button
         type="button"
@@ -309,7 +369,7 @@ export function StoreNewsTabs({ tab, onTabChange }) {
         onClick={() => onTabChange('crew')}
         onKeyDown={handleKeyDown}
       >
-        크루톡(11)
+        크루톡({crewTalkCount})
       </button>
     </div>
   );
@@ -319,18 +379,19 @@ export function updateStoreNewsQueries(queries, tab, value) {
   return { ...queries, [tab]: value };
 }
 
-export function StoreNews({ store = MAIN_STORE, tab = 'notice', onBack, onTabChange, onNav = () => {} }) {
+export function StoreNews({ store = MAIN_STORE, tab = 'notice', onBack, onTabChange, onOpenProduct, onNav = () => {} }) {
   const [queries, setQueries] = useState({ notice: '', crew: '' });
   const [sortOrders, setSortOrders] = useState({ notice: 'latest', crew: 'latest' });
   const isNotice = tab === 'notice';
   const query = queries[tab];
   const sortOrder = sortOrders[tab];
+  const storeNews = getStoreNewsForStore(store);
   const notices = sortDatedItems(
-    filterStoreNotices(STORE_NOTICES, store, query),
+    filterStoreNotices(storeNews.notices, store, query),
     sortOrder,
   );
   const crewTalks = sortDatedItems(
-    filterStoreCrewTalks(STORE_NEWS_TALKS, store, query),
+    filterStoreCrewTalks(storeNews.crewTalks, store, query),
     sortOrder,
   );
 
@@ -344,7 +405,12 @@ export function StoreNews({ store = MAIN_STORE, tab = 'notice', onBack, onTabCha
           <h1>매장 소식</h1>
         </div>
 
-        <StoreNewsTabs tab={tab} onTabChange={onTabChange} />
+        <StoreNewsTabs
+          tab={tab}
+          onTabChange={onTabChange}
+          noticeCount={storeNews.notices.length}
+          crewTalkCount={storeNews.crewTalks.length}
+        />
 
         <div className="store-news-searchbar">
           <label className="store-news-search">
@@ -395,11 +461,25 @@ export function StoreNews({ store = MAIN_STORE, tab = 'notice', onBack, onTabCha
           >
             {crewTalks.length ? crewTalks.map(({ id, product, date, message }) => (
               <article className="store-news-talk-item" key={id}>
-                <img className="product-thumb" src={product.img} alt="" />
+                <button
+                  type="button"
+                  className="store-news-product-thumb"
+                  aria-label={`${product.name} 상세 보기`}
+                  onClick={() => onOpenProduct(product.id, store)}
+                >
+                  <img className="product-thumb" src={product.img} alt="" />
+                </button>
                 <div className="store-news-talk-content">
                   <div className="store-news-product-row">
                     <div>
-                      <h2>{product.name}</h2>
+                      <button
+                        type="button"
+                        className="store-news-product-name"
+                        aria-label={`${product.name} 상세 보기`}
+                        onClick={() => onOpenProduct(product.id, store)}
+                      >
+                        <h2>{product.name}</h2>
+                      </button>
                       <p className="store-news-product-meta">{product.variant} · <span>잔여 재고 {product.stock}개</span></p>
                     </div>
                     <time>{date}</time>

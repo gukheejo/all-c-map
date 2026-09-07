@@ -23,8 +23,10 @@ const {
   CrewTalkSheet,
   default: MapScreen,
   StoreSheet,
+  getDismissedMapUiState,
   getSheetDragBounds,
   getKakaoSelectedPanOffset,
+  shouldShowMapDim,
   getSelectedMarkerOffset,
   getStoreBounds,
   limitInitialZoomLevel,
@@ -34,6 +36,7 @@ const { default: ExpandableCrewTalk } = await vite.ssrLoadModule('/src/component
 const {
   Cart,
   KakaoStorePreviewMap,
+  ProductDetail,
   StoreDetail,
   StoreHome,
   StoreNews,
@@ -62,6 +65,42 @@ const { createPickupFlowState, pickupFlowReducer } = await vite.ssrLoadModule('/
 test('the app opens directly on the store screen', () => {
   const html = renderToStaticMarkup(React.createElement(App));
   assert.match(html, /id="screen-2"/);
+});
+
+test('entering All-C-Map from store home clears any stale store selection', () => {
+  let state = createPickupFlowState();
+  state = pickupFlowReducer(state, { type: 'OPEN_STORE', store: STORES[1] });
+  state = pickupFlowReducer(state, { type: 'ENTER_MAP' });
+
+  assert.equal(state.screen, '3b');
+  assert.equal(state.selectedStore, null);
+  assert.equal(state.overlay, 'none');
+});
+
+test('the product catalog contains fifteen ranked products with demo stock and at least 35 percent off', () => {
+  assert.equal(PRODUCTS.length, 15);
+  PRODUCTS.forEach((product) => {
+    assert.ok(product.stock >= 1 && product.stock <= 6);
+    assert.ok(product.pct >= 35);
+    assert.ok(product.price <= Math.floor(product.orig * 0.65));
+    assert.match(product.img, /^https:\/\/image\.oliveyoung\.co\.kr\//);
+  });
+});
+
+test('product detail mirrors the Figma product page and can open pickup ordering', () => {
+  const product = PRODUCTS[0];
+  const html = renderToStaticMarkup(React.createElement(ProductDetail, {
+    product,
+    store: STORES[1],
+    onBack() {},
+    onOrder() {},
+  }));
+
+  assert.match(html, /id="screen-product"/);
+  assert.match(html, /class="product-detail-hero"/);
+  assert.match(html, /올리브영 충무로역점/);
+  assert.match(html, /class="condition-badge"/);
+  assert.match(html, /픽업주문/);
 });
 
 test('only the store bottom tab is active and the other five tabs are disabled', () => {
@@ -133,6 +172,16 @@ test('the store entry page renders its preview on a Kakao map surface', () => {
   assert.match(html, /올리브영 충무로역점/);
 });
 
+test('the store entry map preview and recommended products expose detail navigation controls', () => {
+  const html = renderToStaticMarkup(
+    React.createElement(StoreHome, { onNav() {}, onOpenProduct() {} }),
+  );
+
+  assert.match(html, /<button[^>]*aria-label="올클맵 지도 미리보기 열기"/);
+  assert.match(html, /<button[^>]*aria-label="\[레오파드 헬로키티\] 웨이크메이크 19종 골라담기 상품 상세 보기"/);
+  assert.match(html, /<button[^>]*aria-label="벨먼 고보습 크리미 스크럽워시 400\+75ml 상품 상세 보기"/);
+});
+
 test('the compact Kakao preview centers the selected store inside its short viewport', () => {
   assert.equal(typeof getStorePreviewCenter, 'function');
   assert.deepEqual(getStorePreviewCenter(STORES[1]), {
@@ -162,6 +211,31 @@ test('the map Crew Talk shortcut exposes its pressed state', () => {
   assert.match(activeHtml, /class="crew-talk-filter active"/);
 });
 
+test('the operating-hours chip exposes and toggles its visual pressed state', () => {
+  let toggles = 0;
+  const filters = CrewTalkFilters({
+    operatingActive: false,
+    onOperatingToggle() { toggles += 1; },
+    crewTalkOpen: false,
+    onCrewTalkToggle() {},
+  });
+  const operatingChip = filters.props.children[0];
+
+  assert.equal(operatingChip.type, 'button');
+  assert.equal(operatingChip.props['aria-pressed'], false);
+  operatingChip.props.onClick();
+  assert.equal(toggles, 1);
+
+  const activeFilters = CrewTalkFilters({
+    operatingActive: true,
+    onOperatingToggle() {},
+    crewTalkOpen: false,
+    onCrewTalkToggle() {},
+  });
+  assert.match(activeFilters.props.children[0].props.className, /active/);
+  assert.equal(activeFilters.props.children[0].props['aria-pressed'], true);
+});
+
 test('the Crew Talk sheet renders the searchable Figma 3-e feed', () => {
   assert.equal(typeof CrewTalkSheet, 'function');
 
@@ -188,20 +262,28 @@ test('the Crew Talk sheet renders the searchable Figma 3-e feed', () => {
   assert.match(html, /aria-label="크루톡 정렬"/);
   assert.match(html, /value="latest" selected="">최신순/);
   assert.match(html, /value="registered">등록순/);
-  assert.equal((html.match(/class="crew-talk-feed-item"/g) ?? []).length, 5);
-  assert.equal((html.match(/aria-expanded="false"/g) ?? []).length, 5);
+  assert.equal((html.match(/class="crew-talk-feed-item"/g) ?? []).length, 10);
+  assert.equal((html.match(/aria-expanded="false"/g) ?? []).length, 10);
+});
+
+test('the All-C-Map Crew Talk feed aggregates every nearby store', () => {
+  assert.equal(CREW_TALKS.length, 10);
+  assert.deepEqual(
+    new Set(CREW_TALKS.map((item) => item.store.id)),
+    new Set(STORES.map((store) => store.id)),
+  );
 });
 
 test('Crew Talk search matches product, store, variant, and message keywords', () => {
   assert.equal(typeof filterCrewTalkItems, 'function');
 
   assert.deepEqual(
-    filterCrewTalkItems(CREW_TALKS, '브링그린').map((item) => item.id),
+    filterCrewTalkItems(CREW_TALKS, '벨먼').map((item) => item.id),
     ['talk-p3'],
   );
   assert.deepEqual(
-    filterCrewTalkItems(CREW_TALKS, '명동거리점').map((item) => item.id),
-    ['talk-p4'],
+    filterCrewTalkItems(CREW_TALKS, '동대문역사문화공원역점').map((item) => item.id),
+    ['talk-p6'],
   );
   assert.deepEqual(
     filterCrewTalkItems(CREW_TALKS, '가을 메이크업').map((item) => item.id),
@@ -230,7 +312,7 @@ test('store-news search supports multiple keywords across notice and Crew Talk c
     ['notice-1', 'notice-4'],
   );
   assert.deepEqual(
-    filterStoreCrewTalks(STORE_NEWS_TALKS, store, '브링그린 민감성').map((item) => item.id),
+    filterStoreCrewTalks(STORE_NEWS_TALKS, store, '벨먼 촉촉한').map((item) => item.id),
     ['store-talk-p3'],
   );
 });
@@ -243,6 +325,40 @@ test('the map uses a live map surface and the exact Figma dim layer', () => {
   assert.match(html, /id="kakao-map"/);
   assert.match(html, /src="\/icons\/map-dim-screen\.svg"/);
   assert.doesNotMatch(html, /figma-myeongdong-map/);
+});
+
+test('the map dim remains active after transient sheets and banners close', () => {
+  assert.equal(shouldShowMapDim?.({
+    showAiBanner: false,
+    selectedStore: null,
+    crewTalkOpen: false,
+  }), true);
+});
+
+test('tapping the map background closes Crew Talk and restores the search button', () => {
+  assert.deepEqual(getDismissedMapUiState?.({
+    selectedId: 'chungmuro',
+    sheetState: 'expanded',
+    crewTalkOpen: true,
+    crewTalkSheetState: 'expanded',
+    showSearchButton: false,
+  }), {
+    selectedId: null,
+    sheetState: 'closed',
+    crewTalkOpen: false,
+    crewTalkSheetState: 'collapsed',
+    showSearchButton: true,
+  });
+});
+
+test('the Figma map dim layer fits the viewport so its spotlight remains visible', async () => {
+  const styles = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8');
+  const dimAsset = await readFile(new URL('../public/icons/map-dim-screen.svg', import.meta.url), 'utf8');
+
+  assert.match(styles, /\.map-dim-art\{[^}]*width:100%[^}]*height:100%/);
+  assert.doesNotMatch(styles, /\.map-dim-art\{[^}]*width:245%/);
+  assert.match(dimAsset, /preserveAspectRatio="xMidYMid slice"/);
+  assert.doesNotMatch(dimAsset, /preserveAspectRatio="none"/);
 });
 
 test('the Kakao map loader rejects a missing JavaScript key with an actionable error', async () => {
@@ -276,13 +392,28 @@ test('Pildong-ro 26 is the fixed location and ranks Chungmuro Station first', ()
   assert.equal(walkingMinutes(nearestDistance), 3);
 });
 
-test('a marker stock number produces the same number of product rows', () => {
+test('a marker stock number produces unique rows without exceeding the catalog', () => {
   const sevenRows = buildStoreProducts(PRODUCTS, 7);
   const thirtyTwoRows = buildStoreProducts(PRODUCTS, 32);
 
   assert.equal(sevenRows.length, 7);
-  assert.equal(thirtyTwoRows.length, 32);
-  assert.equal(new Set(thirtyTwoRows.map((product) => product.listKey)).size, 32);
+  assert.equal(thirtyTwoRows.length, 15);
+  assert.equal(new Set(thirtyTwoRows.map((product) => product.id)).size, 15);
+});
+
+test('all marker counts fit the unique catalog and vary between stores', () => {
+  assert.ok(STORES.every((store) => store.stock >= 1 && store.stock <= PRODUCTS.length));
+  assert.ok(new Set(STORES.map((store) => store.stock)).size >= 6);
+});
+
+test('product Crew Talk cards are distributed through the store list', () => {
+  const talkIndices = PRODUCTS
+    .map((product, index) => product.talk ? index : -1)
+    .filter((index) => index >= 0);
+
+  assert.ok(talkIndices.some((index) => index < 4));
+  assert.ok(talkIndices.some((index) => index >= 7));
+  assert.ok(PRODUCTS.slice(0, 8).some((product) => !product.talk));
 });
 
 test('a generated store product list exposes at most three AI PICK labels', () => {
@@ -396,6 +527,26 @@ test('the selected store sheet renders one row per marker stock number', () => {
   assert.match(html, /class="sheet-notice-card"/);
   assert.match(html, /\[입고알림\] 라스트픽 온라인 입고 완료되었습니다\./);
   assert.match(html, /12분 전/);
+});
+
+test('the map store notice card opens the selected store notice tab', () => {
+  const selectedStore = STORES.find((store) => store.id === 'chungmuro');
+  let state = pickupFlowReducer(createPickupFlowState(), { type: 'ENTER_MAP' });
+  state = pickupFlowReducer(state, { type: 'OPEN_STORE_NEWS', store: selectedStore });
+  const html = renderToStaticMarkup(
+    React.createElement(StoreSheet, {
+      store: selectedStore,
+      sheetState: 'collapsed',
+      onToggle() {},
+      onOpenProduct() {},
+      onOpenStore() {},
+      onOpenNews() {},
+    }),
+  );
+
+  assert.equal(state.screen, '3.5a');
+  assert.equal(state.selectedStore, selectedStore);
+  assert.match(html, /<button[^>]*class="sheet-notice-card"[^>]*aria-label="올리브영 충무로역점 매장 공지 보기"/);
 });
 
 test('the map sheet separates store navigation from its drag region', async () => {
@@ -530,15 +681,72 @@ test('store news switches to the Figma 3.5-b Crew Talk feed', () => {
     }),
   );
   assert.match(html, /id="screen-3-5-b"/);
-  assert.match(html, /aria-selected="true"[^>]*>크루톡\(11\)/);
+  assert.match(html, /aria-selected="true"[^>]*>크루톡\(6\)/);
   assert.match(html, /placeholder="궁금한 상품명을 검색해보세요"/);
   assert.match(html, /aria-label="크루톡 정렬"/);
   assert.match(html, /role="tabpanel"[^>]*aria-labelledby="store-news-crew-tab"/);
   assert.equal(STORE_NEWS_TALKS.length, 11);
-  assert.equal((html.match(/class="store-news-talk-item/g) ?? []).length, 11);
-  assert.equal((html.match(/<b>올리브영 충무로역점<\/b>/g) ?? []).length, 11);
-  assert.equal((html.match(/aria-expanded="false"/g) ?? []).length, 11);
+  assert.equal((html.match(/class="store-news-talk-item/g) ?? []).length, 6);
+  assert.equal((html.match(/<b>올리브영 충무로역점<\/b>/g) ?? []).length, 6);
+  assert.equal((html.match(/aria-expanded="false"/g) ?? []).length, 6);
   assert.doesNotMatch(html, /명동거리점|올리브영 명동대로점|올리브영 명동역점/);
+});
+
+test('store-news Crew Talk products open detail and return to the Crew Talk tab', () => {
+  const selectedStore = STORES.find((store) => store.id === 'chungmuro');
+  const html = renderToStaticMarkup(
+    React.createElement(StoreNews, {
+      store: selectedStore,
+      tab: 'crew',
+      onBack() {},
+      onTabChange() {},
+      onOpenProduct() {},
+    }),
+  );
+  let state = pickupFlowReducer(createPickupFlowState(), { type: 'OPEN_STORE_NEWS', store: selectedStore });
+  state = pickupFlowReducer(state, { type: 'NAVIGATE', screen: '3.5b' });
+  state = pickupFlowReducer(state, {
+    type: 'OPEN_PRODUCT',
+    productId: PRODUCTS[2].id,
+    store: selectedStore,
+    returnScreen: '3.5b',
+  });
+
+  assert.match(html, /aria-label="벨먼 고보습 크리미 스크럽워시 400\+75ml 상세 보기"/);
+  assert.equal(state.screen, 'product');
+  assert.equal(state.productReturnScreen, '3.5b');
+  assert.equal(state.selectedStore, selectedStore);
+  state = pickupFlowReducer(state, { type: 'NAVIGATE', screen: state.productReturnScreen });
+  assert.equal(state.screen, '3.5b');
+});
+
+test('store news uses stable store-specific counts, dates, and copy', () => {
+  const town = STORES.find((store) => store.id === 'town');
+  const chungmuro = STORES.find((store) => store.id === 'chungmuro');
+  const renderNews = (store, tab) => renderToStaticMarkup(
+    React.createElement(StoreNews, {
+      store,
+      tab,
+      onBack() {},
+      onTabChange() {},
+    }),
+  );
+
+  const townNotices = renderNews(town, 'notice');
+  const chungmuroNotices = renderNews(chungmuro, 'notice');
+  const townTalks = renderNews(town, 'crew');
+  const chungmuroTalks = renderNews(chungmuro, 'crew');
+
+  assert.equal((townNotices.match(/class="store-notice-item/g) ?? []).length, 3);
+  assert.equal((chungmuroNotices.match(/class="store-notice-item/g) ?? []).length, 5);
+  assert.equal((townTalks.match(/class="store-news-talk-item/g) ?? []).length, 4);
+  assert.equal((chungmuroTalks.match(/class="store-news-talk-item/g) ?? []).length, 6);
+  assert.match(townNotices, /2026\.09\.03/);
+  assert.match(chungmuroNotices, /2026\.09\.01/);
+  assert.match(townNotices, /명동 타운 한정/);
+  assert.match(chungmuroNotices, /충무로역점 픽업존/);
+  assert.match(townTalks, /명동 타운 크루가 추천하는/);
+  assert.match(chungmuroTalks, /충무로역점 크루가 직접 비교한/);
 });
 
 test('every product Crew Talk surface starts ellipsized and can expose expansion state', () => {
@@ -571,12 +779,64 @@ test('every product Crew Talk surface starts ellipsized and can expose expansion
   );
 });
 
+test('every Crew Talk feed provides enough copy to visibly demonstrate collapsed ellipsis', () => {
+  const messages = [
+    ...CREW_TALKS.map((item) => item.message),
+    ...STORE_NEWS_TALKS.map((item) => item.message),
+  ];
+
+  assert.ok(messages.length >= 21);
+  assert.ok(messages.every((message) => message.length >= 70));
+});
+
+test('store-detail Crew Talk is constrained to the card width', async () => {
+  const styles = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8');
+
+  assert.match(styles, /\.pcard \.talk\{[^}]*width:100%[^}]*max-width:100%[^}]*overflow:hidden/);
+  assert.match(styles, /\.pcard \.talk \.crewtalk-text\{[^}]*flex:1/);
+});
+
 test('notice and Crew Talk searches keep independent query values', () => {
   const noticeQueries = updateStoreNewsQueries({ notice: '', crew: '' }, 'notice', '입고알림');
-  const crewQueries = updateStoreNewsQueries(noticeQueries, 'crew', '브링그린');
+  const crewQueries = updateStoreNewsQueries(noticeQueries, 'crew', '벨먼');
 
   assert.deepEqual(noticeQueries, { notice: '입고알림', crew: '' });
-  assert.deepEqual(crewQueries, { notice: '입고알림', crew: '브링그린' });
+  assert.deepEqual(crewQueries, { notice: '입고알림', crew: '벨먼' });
+});
+
+test('the store-news sort control keeps its full visible width clickable', async () => {
+  const styles = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8');
+
+  assert.match(styles, /\.crew-talk-sort select,\.store-news-sort select\{[^}]*width:100%/);
+  assert.match(styles, /\.crew-talk-sort img,\.store-news-sort img\{[^}]*pointer-events:none/);
+});
+
+test('map and store-news sort controls share the compact down-chevron treatment', async () => {
+  const crewSheet = renderToStaticMarkup(React.createElement(CrewTalkSheet, {
+    items: CREW_TALKS,
+    query: '',
+    sortOrder: 'latest',
+    expandedTalkIds: [],
+    onQueryChange() {},
+    onSheetStateChange() {},
+    onSortOrderChange() {},
+    onToggleTalk() {},
+    onClose() {},
+  }));
+  const storeNews = renderToStaticMarkup(React.createElement(StoreNews, {
+    store: STORES[1],
+    tab: 'notice',
+    onBack() {},
+    onTabChange() {},
+  }));
+  const styles = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8');
+  const crewSortMarkup = crewSheet.match(/<label class="crew-talk-sort">.*?<\/label>/)?.[0] ?? '';
+
+  assert.match(crewSortMarkup, /src="\/icons\/store-arrow\.svg"/);
+  assert.match(storeNews, /src="\/icons\/store-arrow\.svg"/);
+  assert.doesNotMatch(crewSortMarkup, /src="\/icons\/map-link\.svg"/);
+  assert.match(styles, /\.crew-talk-sort,\.store-news-sort\{[^}]*width:54px/);
+  assert.match(styles, /\.crew-talk-sort img,\.store-news-sort img\{[^}]*width:16px[^}]*height:16px/);
 });
 
 test('store detail renders expiry and package-damage labels as condition badges', () => {
