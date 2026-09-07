@@ -310,12 +310,12 @@ test('the Crew Talk sheet renders the searchable Figma 3-e feed', () => {
   assert.match(html, /aria-label="크루톡 정렬"/);
   assert.match(html, /value="latest" selected="">최신순/);
   assert.match(html, /value="registered">등록순/);
-  assert.equal((html.match(/class="crew-talk-feed-item"/g) ?? []).length, 11);
-  assert.equal((html.match(/aria-expanded="false"/g) ?? []).length, 11);
+  assert.equal((html.match(/class="crew-talk-feed-item"/g) ?? []).length, 10);
+  assert.equal((html.match(/aria-expanded="false"/g) ?? []).length, 10);
 });
 
 test('the All-C-Map Crew Talk feed aggregates every nearby store', () => {
-  assert.equal(CREW_TALKS.length, 11);
+  assert.equal(CREW_TALKS.length, 10);
   assert.deepEqual(
     new Set(CREW_TALKS.map((item) => item.store.id)),
     new Set(STORES.map((store) => store.id)),

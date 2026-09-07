@@ -14,7 +14,6 @@ export const STORES = [
   { id: 'daero', name: '올리브영 명동대로점', addr: '서울특별시 중구 퇴계로 120', lat: 37.5606047, lng: 126.9850862, stock: 14 },
   { id: 'yeok', name: '올리브영 명동역점', addr: '서울특별시 중구 퇴계로 115 밀리오레', lat: 37.5610311, lng: 126.984686, stock: 3 },
   { id: 'ddm', name: '올리브영 동대문역사문화공원역점', addr: '서울특별시 중구 장충단로 251', lat: 37.5651, lng: 127.0074, stock: 6 },
-  { id: 'cityhall', name: '올리브영 시청역점', addr: '서울특별시 중구', lat: 37.5658, lng: 126.977, stock: 11 },
   { id: 'jum', name: '올리브영 명동점', addr: '서울특별시 중구 명동8길 14', lat: 37.5629174, lng: 126.9849426, stock: 9 },
   { id: 'central', name: '올리브영 센트럴 명동 타운', addr: '서울특별시 중구 명동8길 27 (엠플라자)', lat: 37.5616385, lng: 126.9849097, stock: 13 },
   { id: 'timewalk', name: '올리브영 명동타임워크점', addr: '서울특별시 중구 남대문로 78', lat: 37.5643473, lng: 126.9829236, stock: 8 },
@@ -147,7 +146,6 @@ export const CREW_TALKS = [
   { id: 'talk-p8', product: PRODUCTS[7], store: STORES[7], date: '2026.08.08', message: STORE_NEWS_TALKS[7].message },
   { id: 'talk-p9', product: PRODUCTS[8], store: STORES[8], date: '2026.08.06', message: PRODUCTS[8].talk },
   { id: 'talk-p10', product: PRODUCTS[9], store: STORES[9], date: '2026.08.04', message: STORE_NEWS_TALKS[9].message },
-  { id: 'talk-p11', product: PRODUCTS[10], store: STORES[10], date: '2026.08.01', message: STORE_NEWS_TALKS[10].message },
 ];
 
 export const STORE_NOTICES = [
@@ -165,7 +163,6 @@ const STORE_NEWS_COUNTS = [
   { notice: 4, crew: 7 },
   { notice: 3, crew: 3 },
   { notice: 5, crew: 5 },
-  { notice: 2, crew: 6 },
   { notice: 4, crew: 4 },
   { notice: 3, crew: 7 },
   { notice: 5, crew: 3 },
