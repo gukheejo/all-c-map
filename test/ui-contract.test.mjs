@@ -330,8 +330,8 @@ test('Crew Talk search matches product, store, variant, and message keywords', (
     ['talk-p3'],
   );
   assert.deepEqual(
-    filterCrewTalkItems(CREW_TALKS, '동대문역사문화공원역점').map((item) => item.id),
-    ['talk-p6'],
+    filterCrewTalkItems(CREW_TALKS, '명동2가점').map((item) => item.id),
+    ['talk-p9'],
   );
   assert.deepEqual(
     filterCrewTalkItems(CREW_TALKS, '가을 메이크업').map((item) => item.id),
@@ -1017,7 +1017,7 @@ test('the Kakao camera pans the selected marker above the sheet', () => {
 
 test('the initial map viewport can fit all ten nearby stores', () => {
   const nearest = selectNearestStores(STORES, FIXED_LOCATION, 10);
-  assert.deepEqual(getStoreBounds(nearest), [[126.9829236, 37.559175], [127.0074, 37.5651]]);
+  assert.deepEqual(getStoreBounds(nearest), [[126.9822809, 37.559175], [126.9962525, 37.5641193]]);
 });
 
 test('the initial Kakao map view never opens wider than level five', () => {

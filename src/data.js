@@ -8,15 +8,15 @@ export const MAIN_STORE = {
 };
 
 export const STORES = [
-  { id: 'town', name: '올리브영 명동 타운', englishName: 'OLIVE YOUNG MYEONGDONG GLOBAL', addr: '서울특별시 중구 명동길 53 1~2층', lat: 37.5641193, lng: 126.9851661, stock: 10, ai: true },
-  { id: 'chungmuro', name: '올리브영 충무로역점', addr: '서울특별시 중구 퇴계로 222 (필동2가)', lat: 37.5615827, lng: 126.9962525, stock: 7, ai: true },
-  { id: 'jungang', name: '올리브영 명동중앙점', addr: '서울특별시 중구 명동8나길 18', lat: 37.561567, lng: 126.984003, stock: 12 },
-  { id: 'daero', name: '올리브영 명동대로점', addr: '서울특별시 중구 퇴계로 120', lat: 37.5606047, lng: 126.9850862, stock: 14 },
-  { id: 'yeok', name: '올리브영 명동역점', addr: '서울특별시 중구 퇴계로 115 밀리오레', lat: 37.5610311, lng: 126.984686, stock: 3 },
-  { id: 'ddm', name: '올리브영 동대문역사문화공원역점', addr: '서울특별시 중구 장충단로 251', lat: 37.5651, lng: 127.0074, stock: 6 },
-  { id: 'jum', name: '올리브영 명동점', addr: '서울특별시 중구 명동8길 14', lat: 37.5629174, lng: 126.9849426, stock: 9 },
-  { id: 'central', name: '올리브영 센트럴 명동 타운', addr: '서울특별시 중구 명동8길 27 (엠플라자)', lat: 37.5616385, lng: 126.9849097, stock: 13 },
-  { id: 'timewalk', name: '올리브영 명동타임워크점', addr: '서울특별시 중구 남대문로 78', lat: 37.5643473, lng: 126.9829236, stock: 8 },
+  { id: 'town', name: '올리브영 명동 타운', englishName: 'OLIVE YOUNG MYEONGDONG GLOBAL', addr: '서울특별시 중구 명동길 53 1~2층', lat: 37.5641193, lng: 126.9851661, stock: 10, ai: true, photo: 'https://image.oliveyoung.co.kr/cfimages/oystore/D176_2026051510042031.jpg?RS=1024x0&QT=85' },
+  { id: 'chungmuro', name: '올리브영 충무로역점', addr: '서울특별시 중구 퇴계로 222 (필동2가)', lat: 37.5615827, lng: 126.9962525, stock: 7, ai: true, photo: 'https://image.oliveyoung.co.kr/cfimages/oystore/D031_1.jpg?RS=1024x0&QT=85' },
+  { id: 'daero', name: '올리브영 명동대로점', addr: '서울특별시 중구 퇴계로 120', lat: 37.5606047, lng: 126.9850862, stock: 14, photo: 'https://image.oliveyoung.co.kr/cfimages/oystore/D316_202502520942011.png?RS=1024x0&QT=85' },
+  { id: 'yeok', name: '올리브영 명동역점', addr: '서울특별시 중구 퇴계로 115 밀리오레', lat: 37.5610311, lng: 126.984686, stock: 3, photo: 'https://image.oliveyoung.co.kr/cfimages/oystore/DE93_2024102971353051.jpg?RS=1024x0&QT=85' },
+  { id: 'street', name: '올리브영 명동거리점', addr: '서울특별시 중구 명동8나길 9 (충무로1가)', lat: 37.5613292, lng: 126.9844486, stock: 5 },
+  { id: 'jum', name: '올리브영 명동점', addr: '서울특별시 중구 명동8길 14', lat: 37.5629174, lng: 126.9849426, stock: 9, photo: 'https://image.oliveyoung.co.kr/cfimages/oystore/DDEC_1.jpg?rs=1200x0&sf=webp&autoorient=y' },
+  { id: 'central', name: '올리브영 센트럴 명동 타운', addr: '서울특별시 중구 명동8길 27 (엠플라자)', lat: 37.5616385, lng: 126.9849097, stock: 13, photo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSLtsfJCgDAu3osuVzwlGP6Km5zsM1wueztBXTrqsloQw&s=10' },
+  { id: 'timewalk', name: '올리브영 명동타임워크점', addr: '서울특별시 중구 남대문로 78', lat: 37.5643473, lng: 126.9829236, stock: 8, photo: 'https://image.oliveyoung.co.kr/cfimages/oystore/DD6F_1.jpg?RS=1024x0&QT=85' },
+  { id: 'myeongdong2ga', name: '올리브영 명동2가점', addr: '서울특별시 중구 남대문로 68-1', lat: 37.5632324, lng: 126.9822809, stock: 6, photo: 'https://image.oliveyoung.co.kr/cfimages/oystore/DF23_2025071831621131.png?rs=1200x0&sf=webp&autoorient=y' },
   { id: 'cj-training-center', name: '올리브영 CJ인재원점', addr: '서울특별시 중구 필동로 26 (필동2가 101-1)', lat: 37.559175, lng: 126.995635, stock: 2 },
 ];
 
