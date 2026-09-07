@@ -643,6 +643,19 @@ test('only selected AI PICK markers use the dark green-highlighted state', async
   assert.doesNotMatch(styles, /\.map-marker\.selected \.map-marker-badge\{[^}]*background:var\(--ai-green\)/);
 });
 
+test('selected non-AI markers go dark without ever taking the green stroke', async () => {
+  const styles = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8');
+
+  assert.match(
+    styles,
+    /\.map-marker:not\(\.ai\)\.selected \.map-marker-label\{[^}]*background:#222[^}]*color:#fff/,
+  );
+
+  const nonAiSelected = styles.match(/\.map-marker:not\(\.ai\)\.selected [^{]*\{[^}]*\}/g) ?? [];
+  assert.equal(nonAiSelected.length > 0, true);
+  nonAiSelected.forEach((rule) => assert.doesNotMatch(rule, /--ai-green/));
+});
+
 test('the AI PICK store preview uses the same two-pixel green stroke as the map marker', async () => {
   const styles = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8');
 
