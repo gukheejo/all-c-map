@@ -191,11 +191,11 @@ a{color:inherit;text-decoration:none}
 .map-marker{position:relative;display:block;padding:0;background:none;color:#000;white-space:nowrap;cursor:pointer;overflow:visible}
 .map-marker-label{display:flex;align-items:center;justify-content:center;background:#fff;border:1.4px solid #fff;border-radius:30px;padding:8px 10px;font-size:14px;line-height:normal;font-weight:700;box-shadow:0 2px 3px rgba(0,0,0,.25)}
 .map-marker-badge{position:absolute;right:-2px;top:-9px;display:flex;align-items:center;justify-content:center;width:18px;height:18px;padding:3px;background:#fff;border:1.038px solid #a5a5a5;border-radius:9px;color:#404040;font-size:9.519px;line-height:1;font-weight:600;letter-spacing:-.7615px}
-.map-marker.ai .map-marker-label{border-color:var(--ai-green)}
+.map-marker.ai .map-marker-label{border-color:var(--ai-green);border-width:2px}
 .map-marker.ai .map-marker-badge{background:var(--ai-green);border-color:var(--ai-green)}
 .map-marker.selected{z-index:20}
-.map-marker.selected .map-marker-label{background:#222;border-color:var(--ai-green);color:#fff}
-.map-marker.selected .map-marker-badge{background:var(--ai-green);border-color:var(--ai-green);color:#222}
+.map-marker.ai.selected .map-marker-label{background:#222;border-color:var(--ai-green);color:#fff}
+.map-marker.ai.selected .map-marker-badge{background:var(--ai-green);border-color:var(--ai-green);color:#222}
 
 .sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:10px 10px 0 0;box-shadow:0 -4px 12px rgba(0,0,0,.15);transition:height .2s cubic-bezier(.22,1,.36,1);overflow:hidden;z-index:600;display:none}
 .sheet.show{display:block}
@@ -250,8 +250,9 @@ a{color:inherit;text-decoration:none}
 .crew-item .nm{font-size:12px;color:#111;font-weight:500;cursor:pointer}
 .crew-item .subrow{display:flex;gap:4px;align-items:center;margin-top:4px;flex-wrap:wrap}
 .crew-item .subrow .variant{font-size:10px;color:#b6b6b6}
-.badge-ai{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:8px;line-height:normal;font-weight:800;padding:3px 4px;border-radius:10px;border:1px solid var(--ai-green);background:linear-gradient(135deg,#8dff79,#19aa00);color:#fff;white-space:nowrap}
-.crew-item .badge-gray{font-size:8px;font-weight:700;padding:3px 4px;border-radius:10px;background:#a6a6a6;border:1px solid #cacaca;color:#fff}
+.badge-ai,.condition-badge,.crew-item .badge-gray{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:8px;line-height:normal;padding:3px 4px;border-radius:10px;letter-spacing:-.16px;white-space:nowrap}
+.badge-ai{font-weight:800;border:1px solid var(--ai-green);background:linear-gradient(135deg,#8dff79,#19aa00);color:#fff}
+.condition-badge,.crew-item .badge-gray{font-weight:700;background:#a6a6a6;border:1px solid #cacaca;color:#fff}
 .crew-item .price-row{display:flex;justify-content:space-between;align-items:flex-end;margin-top:5px}
 .crew-item .orig{display:flex;height:7px;align-items:center;justify-content:flex-end;margin-top:6px;font-size:8px;line-height:15px;font-weight:500;color:#666;text-align:right;text-decoration:line-through}
 .crew-item .now{font-size:14px;font-weight:600}
@@ -289,7 +290,6 @@ a{color:inherit;text-decoration:none}
 .pcard-name-link{display:block;width:100%;text-align:left}
 .pcard .subrow{display:flex;gap:4px;align-items:center;margin-top:4px;flex-wrap:wrap}
 .pcard .variant{font-size:12px;color:#b6b6b6}
-.pcard .condition-badge{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;padding:4px;border:1px solid #cacaca;border-radius:10px;background:#a6a6a6;color:#fff;font-size:8px;font-weight:700;line-height:normal;letter-spacing:-.16px;white-space:nowrap}
 .pcard .stockpill{font-size:11px;color:var(--red);background:#fff;border-radius:50px;margin-top:6px;display:inline-block}
 .pcard .pricebar{display:flex;justify-content:space-between;align-items:flex-end;margin-top:8px}
 .pcard .pct{color:var(--red);font-weight:700;font-size:16px}
@@ -363,7 +363,6 @@ a{color:inherit;text-decoration:none}
 .pickup-sheet .item .variant{font-size:13px;color:#b6b6b6;margin-top:4px}
 .pickup-sheet .pickup-variant-row{display:flex;align-items:center;gap:4px;min-width:0}
 .pickup-sheet .pickup-variant-row .variant{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.condition-badge{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;padding:4px 6px;border:1px solid #cacaca;border-radius:10px;background:#a6a6a6;color:#fff;font-size:10px;font-weight:700;line-height:1;white-space:nowrap}
 .pickup-sheet .item .stock{font-size:12px;color:var(--red);font-weight:600;margin-top:10px}
 .pickup-sheet .qtyrow{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
 .qty-stepper{display:flex;align-items:center;border:1px solid #e5e7eb;border-radius:6px;height:30px;width:96px}
