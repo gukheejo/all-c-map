@@ -214,7 +214,7 @@ test('the store entry page renders its preview on a Kakao map surface', () => {
   );
 
   assert.match(html, /data-map-provider="kakao"/);
-  assert.match(html, /aria-label="충무로 주변 카카오 지도"/);
+  assert.match(html, /aria-label="CJ인재원 주변 카카오 지도"/);
   assert.match(html, /올리브영 충무로역점/);
 });
 

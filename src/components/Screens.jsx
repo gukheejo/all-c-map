@@ -79,7 +79,7 @@ export function KakaoStorePreviewMap({ store }) {
   }, [store]);
 
   return (
-    <div className="reco-map" data-map-provider="kakao" aria-label="충무로 주변 카카오 지도">
+    <div className="reco-map" data-map-provider="kakao" aria-label="CJ인재원 주변 카카오 지도">
       <div className="reco-map-canvas" ref={mapElementRef} />
       <span className="sr-only">{store.name}, 재고 {store.stock}개</span>
       {!mapReady && <span className="reco-map-loading">{mapError || '지도를 불러오는 중이에요.'}</span>}

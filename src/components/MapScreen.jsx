@@ -566,7 +566,7 @@ export default function MapScreen({ onNav, onOpenProduct, onOpenStore, onOpenNew
     <section className={`screen active${bottomNavHidden ? ' bottomnav-hidden' : ''}`} id="screen-3b" data-scroll-mode="viewport">
       <div className="map-wrap">
         <div className="map-canvas">
-          <div id="kakao-map" ref={mapDivRef} aria-label="충무로 주변 올리브영 실제 지도" />
+          <div id="kakao-map" ref={mapDivRef} aria-label="CJ인재원 주변 올리브영 실제 지도" />
           {!mapReady && <div className="map-load-state" role="status">{mapError || '지도를 불러오는 중이에요.'}</div>}
           {shouldShowMapDim() && <img className="map-dim-art" src="/icons/map-dim-screen.svg" alt="" />}
         </div>
