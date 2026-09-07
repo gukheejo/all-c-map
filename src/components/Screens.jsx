@@ -79,7 +79,7 @@ export function KakaoStorePreviewMap({ store }) {
   }, [store]);
 
   return (
-    <div className="reco-map" data-map-provider="kakao" aria-label="충무로 주변 카카오 지도">
+    <div className="reco-map" data-map-provider="kakao" aria-label="CJ인재원 주변 카카오 지도">
       <div className="reco-map-canvas" ref={mapElementRef} />
       <span className="sr-only">{store.name}, 재고 {store.stock}개</span>
       {!mapReady && <span className="reco-map-loading">{mapError || '지도를 불러오는 중이에요.'}</span>}
@@ -185,7 +185,7 @@ export function StoreHome({ onNav, onOpenProduct }) {
           {nearbyStores.map((store, index) => (
             <article className="store-benefit-block" key={store.id}>
               <div className="store-card" data-store-benefit="true">
-                <img className="thumb" src="/photos/store-hero.png" alt="" />
+                <img className="thumb" src={store.photo ?? '/photos/store-hero.png'} alt="" />
                 <div className="store-card-info">
                   <div className="name">{store.name}<span className="dist">{formatDistance(distanceKm(FIXED_LOCATION, store))}</span></div>
                   <div className="addr">{store.addr}</div>
@@ -281,7 +281,7 @@ export function StoreDetail({
           <h1>{store.name}</h1>
         </div>
         <div className="store-hero-wrap">
-          <img src="/photos/store-hero.png" alt="" />
+          <img src={store.photo ?? '/photos/store-hero.png'} alt="" />
           <div className="hero-more">이미지 더보기 +</div>
         </div>
         <div className="store-info">

@@ -196,6 +196,7 @@ a{color:inherit;text-decoration:none}
 .map-marker.selected{z-index:20}
 .map-marker.ai.selected .map-marker-label{background:#222;border-color:var(--ai-green);color:#fff}
 .map-marker.ai.selected .map-marker-badge{background:var(--ai-green);border-color:var(--ai-green);color:#222}
+.map-marker:not(.ai).selected .map-marker-label{background:#222;border-color:#222;color:#fff}
 
 .sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:10px 10px 0 0;box-shadow:0 -4px 12px rgba(0,0,0,.15);transition:height .2s cubic-bezier(.22,1,.36,1);overflow:hidden;z-index:600;display:none}
 .sheet.show{display:block}

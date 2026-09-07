@@ -215,7 +215,7 @@ test('the store entry page renders its preview on a Kakao map surface', () => {
   );
 
   assert.match(html, /data-map-provider="kakao"/);
-  assert.match(html, /aria-label="충무로 주변 카카오 지도"/);
+  assert.match(html, /aria-label="CJ인재원 주변 카카오 지도"/);
   assert.match(html, /올리브영 충무로역점/);
 });
 
@@ -311,12 +311,12 @@ test('the Crew Talk sheet renders the searchable Figma 3-e feed', () => {
   assert.match(html, /aria-label="크루톡 정렬"/);
   assert.match(html, /value="latest" selected="">최신순/);
   assert.match(html, /value="registered">등록순/);
-  assert.equal((html.match(/class="crew-talk-feed-item"/g) ?? []).length, 11);
-  assert.equal((html.match(/aria-expanded="false"/g) ?? []).length, 11);
+  assert.equal((html.match(/class="crew-talk-feed-item"/g) ?? []).length, 10);
+  assert.equal((html.match(/aria-expanded="false"/g) ?? []).length, 10);
 });
 
 test('the All-C-Map Crew Talk feed aggregates every nearby store', () => {
-  assert.equal(CREW_TALKS.length, 11);
+  assert.equal(CREW_TALKS.length, 10);
   assert.deepEqual(
     new Set(CREW_TALKS.map((item) => item.store.id)),
     new Set(STORES.map((store) => store.id)),
@@ -331,8 +331,8 @@ test('Crew Talk search matches product, store, variant, and message keywords', (
     ['talk-p3'],
   );
   assert.deepEqual(
-    filterCrewTalkItems(CREW_TALKS, '동대문역사문화공원역점').map((item) => item.id),
-    ['talk-p6'],
+    filterCrewTalkItems(CREW_TALKS, '명동2가점').map((item) => item.id),
+    ['talk-p9'],
   );
   assert.deepEqual(
     filterCrewTalkItems(CREW_TALKS, '가을 메이크업').map((item) => item.id),
@@ -509,7 +509,7 @@ test('only AI PICK stores expose AI PICK products throughout the store flow', ()
   if (!buildStoreProductsForStore) return;
 
   const aiStore = STORES.find((store) => store.id === 'cj-training-center');
-  const standardStore = STORES.find((store) => store.id === 'jungang');
+  const standardStore = STORES.find((store) => store.id === 'jum');
   const aiRows = buildStoreProductsForStore(PRODUCTS, aiStore);
   const standardRows = buildStoreProductsForStore(PRODUCTS, standardStore);
 
@@ -641,6 +641,19 @@ test('only selected AI PICK markers use the dark green-highlighted state', async
   assert.match(styles, /\.map-marker\.ai\.selected \.map-marker-badge\{[^}]*background:var\(--ai-green\)/);
   assert.doesNotMatch(styles, /\.map-marker\.selected \.map-marker-label\{[^}]*background:#222/);
   assert.doesNotMatch(styles, /\.map-marker\.selected \.map-marker-badge\{[^}]*background:var\(--ai-green\)/);
+});
+
+test('selected non-AI markers go dark without ever taking the green stroke', async () => {
+  const styles = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8');
+
+  assert.match(
+    styles,
+    /\.map-marker:not\(\.ai\)\.selected \.map-marker-label\{[^}]*background:#222[^}]*color:#fff/,
+  );
+
+  const nonAiSelected = styles.match(/\.map-marker:not\(\.ai\)\.selected [^{]*\{[^}]*\}/g) ?? [];
+  assert.equal(nonAiSelected.length > 0, true);
+  nonAiSelected.forEach((rule) => assert.doesNotMatch(rule, /--ai-green/));
 });
 
 test('the AI PICK store preview uses the same two-pixel green stroke as the map marker', async () => {
@@ -1081,7 +1094,7 @@ test('the Kakao camera pans the selected marker above the sheet', () => {
 
 test('the initial map viewport can fit all ten nearby stores', () => {
   const nearest = selectNearestStores(STORES, FIXED_LOCATION, 10);
-  assert.deepEqual(getStoreBounds(nearest), [[126.9829236, 37.559175], [127.0074, 37.5651]]);
+  assert.deepEqual(getStoreBounds(nearest), [[126.9822809, 37.559175], [126.9962525, 37.5641193]]);
 });
 
 test('the initial Kakao map view never opens wider than level five', () => {
