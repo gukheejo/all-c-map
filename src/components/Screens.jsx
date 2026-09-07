@@ -1,9 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import BottomNav from './BottomNav.jsx';
 import { loadKakaoMaps } from '../kakao-map.js';
-import { PRODUCTS, STORES, getStoreNewsForStore, won, MAIN_STORE } from '../data.js';
+import {
+  MAIN_STORE,
+  PRODUCTS,
+  STORES,
+  getStoreCrewTalkMessage,
+  getStoreNewsForStore,
+  won,
+} from '../data.js';
 import {
   FIXED_LOCATION,
+  buildStoreProductsForStore,
   distanceKm,
   filterStoreCrewTalks,
   filterStoreNotices,
@@ -92,14 +100,15 @@ export function selectHomePreviewStore(stores) {
     ?? selectNearestStores(stores, FIXED_LOCATION, 1)[0];
 }
 
-export function StoreHome({ onNav, onOpenProduct }) {
+export function StoreHome({ onNav, onOpenProduct, onOpenStore }) {
   const [expandedTalkIds, setExpandedTalkIds] = useState([]);
   const nearbyStores = selectNearestStores(STORES, FIXED_LOCATION, 2);
   const nearestStore = selectHomePreviewStore(STORES);
   const nearestDistance = distanceKm(FIXED_LOCATION, nearestStore);
+  const storeProducts = buildStoreProductsForStore(PRODUCTS, nearestStore);
   const recommendations = [
-    { label: '10일 전 장바구니에 담았어요', product: PRODUCTS[0] },
-    { label: '2개월 전 구매했던 제품이에요', product: PRODUCTS[2] },
+    { label: '10일 전 장바구니에 담았어요', product: storeProducts[0] },
+    { label: '2개월 전 구매했던 제품이에요', product: storeProducts.find((product) => product.id === PRODUCTS[0].id) },
   ];
 
   return (
@@ -149,7 +158,7 @@ export function StoreHome({ onNav, onOpenProduct }) {
                     type="button"
                     className="reco-product-image-link"
                     aria-label={`${product.name} 상품 상세 보기`}
-                    onClick={() => onOpenProduct?.(product.id)}
+                    onClick={() => onOpenProduct?.(product.id, nearestStore)}
                   >
                     <img className="prod" src={product.img} alt="" />
                   </button>
@@ -157,15 +166,20 @@ export function StoreHome({ onNav, onOpenProduct }) {
                     <button
                       type="button"
                       className="name reco-product-name-link"
-                      onClick={() => onOpenProduct?.(product.id)}
+                      onClick={() => onOpenProduct?.(product.id, nearestStore)}
                     >
                       {product.name}
                     </button>
-                    <div className="reco-meta"><span className="sub">{product.variant}</span><span className="stock">잔여 재고 {product.stock}개</span></div>
+                    <div className="reco-meta">
+                      <span className="sub">{product.variant}</span>
+                      {product.badge && <span className="badge-ai">{product.badge}</span>}
+                      {product.badge2 && <span className="condition-badge">{product.badge2}</span>}
+                      <span className="stock">잔여 재고 {product.stock}개</span>
+                    </div>
                     {product.talk && (
                       <ExpandableCrewTalk
                         className="crewtalk"
-                        message={product.talk}
+                        message={getStoreCrewTalkMessage(nearestStore, product)}
                         expanded={expandedTalkIds.includes(product.id)}
                         onToggle={() => setExpandedTalkIds((current) => toggleExpandedId(current, product.id))}
                       />
@@ -184,15 +198,25 @@ export function StoreHome({ onNav, onOpenProduct }) {
           </div>
           {nearbyStores.map((store, index) => (
             <article className="store-benefit-block" key={store.id}>
-              <div className="store-card" data-store-benefit="true">
-                <img className="thumb" src={store.photo ?? '/photos/store-hero.png'} alt="" />
+              <button
+                type="button"
+                className="store-card"
+                data-store-benefit="true"
+                aria-label={`${store.name} 매장 상세 보기`}
+                onClick={() => onOpenStore?.(store)}
+              >
+                <img
+                  className={`thumb${store.id === 'cj-training-center' ? ' thumb-cj' : ''}`}
+                  src={store.photo ?? '/photos/store-hero.png'}
+                  alt=""
+                />
                 <div className="store-card-info">
                   <div className="name">{store.name}<span className="dist">{formatDistance(distanceKm(FIXED_LOCATION, store))}</span></div>
                   <div className="addr">{store.addr}</div>
                   <div className="hours"><strong>영업 중</strong> · 10:00 ~ {index === 0 ? '22:00' : '22:30'}</div>
                   <div className="badges"><span className="benefit">쿠폰/증정</span><span>픽업</span>{index === 0 && <><span>스마트 반품</span><span>신규오픈</span></>}</div>
                 </div>
-              </div>
+              </button>
               <div className="store-gift-notice">
                 <span className="gift-label">증정</span>
                 <span className="gift-copy">올리브영 리유저블백</span>
@@ -318,7 +342,7 @@ export function StoreDetail({
               {p.talk && (
                 <ExpandableCrewTalk
                   className="talk"
-                  message={p.talk}
+                  message={getStoreCrewTalkMessage(store, p)}
                 />
               )}
             </div>
@@ -493,7 +517,6 @@ export function StoreNews({ store = MAIN_STORE, tab = 'notice', onBack, onTabCha
                   </div>
                   <ExpandableCrewTalk
                     className="store-news-talk-bubble"
-                    label={store.name}
                     message={message}
                   />
                 </div>

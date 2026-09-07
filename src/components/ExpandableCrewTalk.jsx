@@ -2,8 +2,9 @@ import { useState } from 'react';
 
 export default function ExpandableCrewTalk({
   className = '',
-  label = '크루TALK',
   message,
+  heading = '크루 TALK',
+  headingClassName = '',
   expanded: controlledExpanded,
   onToggle,
 }) {
@@ -22,7 +23,7 @@ export default function ExpandableCrewTalk({
       aria-expanded={expanded}
       onClick={handleToggle}
     >
-      <b>{label}</b>
+      <b className={headingClassName || undefined}>{heading}</b>
       <span className="crewtalk-text">{message}</span>
       <span className="sr-only">{expanded ? '접기' : '전체 내용 보기'}</span>
     </button>

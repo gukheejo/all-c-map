@@ -132,7 +132,6 @@ a{color:inherit;text-decoration:none}
 .reco-item .sub{font-size:10px;line-height:14px;color:#b6b6b6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .reco-item .stock{font-size:10px;line-height:14px;color:var(--red);flex-shrink:0}
 .reco-item .crewtalk{width:100%;height:29px;margin-top:5px;background:#f2ffed;border:.5px dashed #b6b6b6;border-radius:6px;padding:0 10px;font-size:10px;line-height:14px;color:#666;display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;text-align:left;cursor:pointer}
-.reco-item .crewtalk b{color:#111;flex-shrink:0}
 .reco-item .crewtalk .crewtalk-text{min-width:0;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .reco-item .crewtalk:focus{outline:none}
 .reco-item .crewtalk:focus-visible{box-shadow:0 0 0 2px rgba(74,241,45,.35)}
@@ -145,8 +144,9 @@ a{color:inherit;text-decoration:none}
 .store-benefit-hd .sort{font-size:14px;color:#4a5565;display:flex;align-items:center;gap:4px}
 .store-benefit-hd .sort img{width:14px;height:14px}
 .store-benefit-block{padding-bottom:12px}
-.store-card{padding:16px;display:flex;gap:12px}
+.store-card{width:100%;padding:16px;border:0;background:#fff;display:flex;gap:12px;text-align:left;cursor:pointer}
 .store-card img.thumb{width:96px;height:96px;border-radius:5px;object-fit:cover;background:#f3f4f6;flex-shrink:0}
+.store-card img.thumb-cj{object-position:36% center}
 .store-card-info{flex:1;min-width:0;padding-top:1px}
 .store-card .name{font-size:15px;line-height:21px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .store-card .dist{font-size:12px;color:#a6a6a6;margin-left:6px;font-weight:400}
@@ -238,7 +238,7 @@ a{color:inherit;text-decoration:none}
 .crew-talk-stock{color:var(--red);flex-shrink:0}
 .crew-talk-product-row time{padding-top:2px;flex-shrink:0;font-size:10px;color:#b6b6b6}
 .crew-talk-message{width:calc(100% - 47px);min-height:51px;margin:0 0 0 47px;padding:9px 10px;background:#f2ffed;border:.5px dashed #b6b6b6;border-radius:6px;color:#666;text-align:left;font-size:10px;line-height:14px;display:flex;flex-direction:column;gap:7px;cursor:pointer}
-.crew-talk-message b{color:#666;font-weight:600}
+.crew-talk-message .crew-talk-location{font-size:11px;line-height:15px;color:#666;font-weight:700}
 .crew-talk-message span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .crew-talk-message.expanded span{overflow:visible;text-overflow:clip;white-space:normal}
 .crew-talk-empty{padding:48px 20px;text-align:center;color:#99a1a8;font-size:14px}
@@ -262,7 +262,6 @@ a{color:inherit;text-decoration:none}
 .crew-item .talk{background:#f2ffed;border:.5px dashed #c6c6c6;border-radius:6px;padding:8px 12px 8px 15px;width:100%;font-size:10px;line-height:14px;color:#666;display:flex;gap:6px}
 .crew-item .talk .crewtalk-text,.pcard .talk .crewtalk-text{min-width:0;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .crew-item .talk.expanded .crewtalk-text,.pcard .talk.expanded .crewtalk-text{white-space:normal;overflow:visible;text-overflow:clip}
-.crew-item .talk b{flex-shrink:0;color:#333}
 
 /* ---------- store detail (screen 4) ---------- */
 .store-hero-wrap{position:relative;height:208px;background:#e5e7eb;overflow:hidden}
@@ -302,6 +301,7 @@ a{color:inherit;text-decoration:none}
 .pcard .talk .crewtalk-text{flex:1;overflow-wrap:anywhere}
 
 .expandable-crewtalk{font-family:inherit;font-size:10px;line-height:14px;text-align:left;cursor:pointer}
+.expandable-crewtalk b{color:#333;font-weight:700;flex-shrink:0}
 .expandable-crewtalk .crewtalk-text{display:-webkit-box;overflow:hidden;text-overflow:ellipsis;-webkit-box-orient:vertical;-webkit-line-clamp:2}
 .expandable-crewtalk.expanded .crewtalk-text{display:block;overflow:visible;text-overflow:clip;-webkit-line-clamp:unset}
 .expandable-crewtalk:focus{outline:none}

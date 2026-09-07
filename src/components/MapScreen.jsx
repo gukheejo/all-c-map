@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CREW_TALKS, STORES, PRODUCTS, won } from '../data.js';
+import { CREW_TALKS, STORES, PRODUCTS, getStoreCrewTalkMessage, getStoreNewsForStore, won } from '../data.js';
 import {
   FIXED_LOCATION,
   buildStoreProductsForStore,
@@ -198,6 +198,7 @@ function useSheetGesture(sheetRef, sheetState, onToggle, exactHalf = false) {
 
 export function StoreSheet({ store, sheetState, onToggle, onOpenProduct, onOpenStore, onOpenNews, sheetRef }) {
   const storeProducts = buildStoreProductsForStore(PRODUCTS, store);
+  const storeNotice = getStoreNewsForStore(store).notices[0];
   const gesture = useSheetGesture(sheetRef, sheetState, onToggle);
 
   return (
@@ -232,8 +233,8 @@ export function StoreSheet({ store, sheetState, onToggle, onOpenProduct, onOpenS
           onClick={() => onOpenNews(store)}
         >
           <img className="notice-icon" src="/icons/notice-bell.svg" alt="" />
-          <span className="notice-copy">[입고알림] 라스트픽 온라인 입고 완료되었습니다.</span>
-          <span className="notice-time">12분 전</span>
+          <span className="notice-copy">{storeNotice.message}</span>
+          <span className="notice-time">{storeNotice.date}</span>
           <img className="notice-link" src="/icons/map-link.svg" alt="" />
         </button>
       </div>
@@ -261,7 +262,7 @@ export function StoreSheet({ store, sheetState, onToggle, onOpenProduct, onOpenS
             {product.talk && (
               <ExpandableCrewTalk
                 className="talk"
-                message={product.talk}
+                message={getStoreCrewTalkMessage(store, product)}
               />
             )}
           </div>
@@ -363,7 +364,8 @@ export function CrewTalkSheet({
               </div>
               <ExpandableCrewTalk
                 className="crew-talk-message"
-                label={item.store.name}
+                heading={item.store.name}
+                headingClassName="crew-talk-location"
                 message={item.message}
                 expanded={expanded}
                 onToggle={() => onToggleTalk(item.id)}
