@@ -570,7 +570,7 @@ export default function MapScreen({ onNav, onOpenProduct, onOpenStore, onOpenNew
   );
 
   return (
-    <section className="screen active" id="screen-3b">
+    <section className="screen active" id="screen-3b" data-scroll-mode="viewport">
       <div className="map-wrap">
         <div className="map-canvas">
           <div id="kakao-map" ref={mapDivRef} aria-label="충무로 주변 올리브영 실제 지도" />
