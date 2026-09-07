@@ -18,7 +18,7 @@ export { loadKakaoMaps } from '../kakao-map.js';
 
 const CENTER = FIXED_LOCATION;
 const STORE_LIMIT = 10;
-const SELECTED_MARKER_GAP = 80;
+const SELECTED_MARKER_GAP = 38;
 export function getStoreBounds(stores) {
   return stores.reduce(
     (bounds, store) => [
@@ -60,7 +60,7 @@ export function getDismissedMapUiState(current) {
 
 export function getSheetDragBounds(stageHeight, exactHalf = false) {
   return {
-    minHeight: exactHalf ? stageHeight * 0.5 : Math.min(400, Math.max(300, stageHeight * 0.5)),
+    minHeight: stageHeight * 0.55,
     maxHeight: Math.max(300, stageHeight - 57),
   };
 }
@@ -197,7 +197,7 @@ function useSheetGesture(sheetRef, sheetState, onToggle, exactHalf = false) {
 }
 
 export function StoreSheet({ store, sheetState, onToggle, onOpenProduct, onOpenStore, onOpenNews, sheetRef }) {
-  const storeProducts = buildStoreProducts(PRODUCTS, store.stock);
+  const storeProducts = buildStoreProducts(PRODUCTS, store.stock, 3, store.id);
   const gesture = useSheetGesture(sheetRef, sheetState, onToggle);
 
   return (
@@ -251,6 +251,7 @@ export function StoreSheet({ store, sheetState, onToggle, onOpenProduct, onOpenS
                   {product.badge && <span className="badge-ai">{product.badge}</span>}
                   {product.badge2 && <span className="badge-gray">{product.badge2}</span>}
                 </div>
+                <span className="orig">{won(product.orig)}</span>
                 <div className="price-row">
                   <span className="stock">잔여 재고 | {product.stock}개</span>
                   <span className="now"><span className="pct">{product.pct}%</span>{won(product.price)}</span>
@@ -303,7 +304,6 @@ export function CrewTalkSheet({
   onSheetStateChange,
   onSortOrderChange,
   onToggleTalk,
-  onClose,
 }) {
   const sheetRef = useRef(null);
   const gesture = useSheetGesture(sheetRef, sheetState, onSheetStateChange, true);
@@ -323,9 +323,7 @@ export function CrewTalkSheet({
         >
           <span className="sheet-handle" />
         </button>
-        <button type="button" className="store-title" onClick={onClose} aria-label="크루톡 바텀시트 닫기">
-          크루톡<img src="/icons/map-link.svg" alt="" />
-        </button>
+        <h2 className="store-title">크루톡</h2>
       </div>
       <div className="crew-talk-search-row">
         <label className="crew-talk-search">
@@ -558,19 +556,14 @@ export default function MapScreen({ onNav, onOpenProduct, onOpenStore, onOpenNew
     setCrewTalkOpen(true);
   }
 
-  function closeCrewTalk() {
-    setCrewTalkOpen(false);
-    setCrewTalkSheetState('collapsed');
-    setShowSearchButton(true);
-  }
-
   const visibleCrewTalks = sortDatedItems(
     filterCrewTalkItems(CREW_TALKS, crewTalkQuery),
     crewTalkSortOrder,
   );
+  const bottomNavHidden = sheetState !== 'closed' || crewTalkOpen;
 
   return (
-    <section className="screen active" id="screen-3b" data-scroll-mode="viewport">
+    <section className={`screen active${bottomNavHidden ? ' bottomnav-hidden' : ''}`} id="screen-3b" data-scroll-mode="viewport">
       <div className="map-wrap">
         <div className="map-canvas">
           <div id="kakao-map" ref={mapDivRef} aria-label="충무로 주변 올리브영 실제 지도" />
@@ -629,11 +622,10 @@ export default function MapScreen({ onNav, onOpenProduct, onOpenStore, onOpenNew
             onSheetStateChange={setCrewTalkSheetState}
             onSortOrderChange={setCrewTalkSortOrder}
             onToggleTalk={(id) => setExpandedTalkIds((current) => toggleExpandedId(current, id))}
-            onClose={closeCrewTalk}
           />
         )}
       </div>
-      <BottomNav active="store" onNav={onNav} />
+      <BottomNav active="store" onNav={onNav} hidden={bottomNavHidden} />
     </section>
   );
 }

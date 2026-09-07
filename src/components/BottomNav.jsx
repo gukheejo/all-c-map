@@ -56,15 +56,16 @@ function NavIcon({ name }) {
   }
 }
 
-export default function BottomNav({ active, onNav }) {
+export default function BottomNav({ active, onNav, hidden = false }) {
   return (
-    <nav className="bottomnav">
+    <nav className={`bottomnav${hidden ? ' is-hidden' : ''}`} aria-hidden={hidden || undefined}>
       {items.map((it) => (
         <button
           key={it.key}
           className={'navitem' + (active === it.key ? ' active' : '')}
           aria-current={active === it.key ? 'page' : undefined}
           disabled={active !== it.key}
+          tabIndex={hidden ? -1 : undefined}
           onClick={() => it.screen && onNav(it.screen)}
         >
           <NavIcon name={it.key} />
