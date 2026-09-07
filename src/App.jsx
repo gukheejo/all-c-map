@@ -47,11 +47,12 @@ export default function App() {
     dispatch({ type: 'RESTART' });
   }
 
-  const productObj = PRODUCTS.find((product) => product.id === flow.productId);
   const productStore = flow.selectedStore ?? STORES.find((store) => store.id === 'chungmuro');
   const selectedStoreProducts = flow.selectedStore
-    ? buildStoreProducts(PRODUCTS, flow.selectedStore.stock)
+    ? buildStoreProducts(PRODUCTS, flow.selectedStore.stock, 3, flow.selectedStore.id)
     : [];
+  const productObj = selectedStoreProducts.find((product) => product.id === flow.productId)
+    ?? PRODUCTS.find((product) => product.id === flow.productId);
   const cartStore = flow.cart[0]?.store ?? flow.selectedStore;
   const dimVisible = flow.overlay === 'pickup-sheet' || flow.overlay === 'barcode';
   const layoutMode = flow.screen === '3b' ? 'viewport' : 'document';
@@ -100,6 +101,7 @@ export default function App() {
             toastShown={flow.overlay === 'added-toast'}
             onDismissToast={() => dispatch({ type: 'CLOSE_OVERLAY' })}
             onGoCart={() => dispatch({ type: 'GO_TO_CART' })}
+            bottomNavHidden={flow.overlay === 'pickup-sheet'}
           />
         )}
         {(flow.screen === '3.5a' || flow.screen === '3.5b') && flow.selectedStore && (

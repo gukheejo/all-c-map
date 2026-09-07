@@ -18,7 +18,7 @@ export { loadKakaoMaps } from '../kakao-map.js';
 
 const CENTER = FIXED_LOCATION;
 const STORE_LIMIT = 10;
-const SELECTED_MARKER_GAP = 80;
+const SELECTED_MARKER_GAP = 38;
 export function getStoreBounds(stores) {
   return stores.reduce(
     (bounds, store) => [
@@ -60,7 +60,7 @@ export function getDismissedMapUiState(current) {
 
 export function getSheetDragBounds(stageHeight, exactHalf = false) {
   return {
-    minHeight: exactHalf ? stageHeight * 0.5 : Math.min(400, Math.max(300, stageHeight * 0.5)),
+    minHeight: stageHeight * 0.55,
     maxHeight: Math.max(300, stageHeight - 57),
   };
 }
@@ -197,7 +197,7 @@ function useSheetGesture(sheetRef, sheetState, onToggle, exactHalf = false) {
 }
 
 export function StoreSheet({ store, sheetState, onToggle, onOpenProduct, onOpenStore, onOpenNews, sheetRef }) {
-  const storeProducts = buildStoreProducts(PRODUCTS, store.stock);
+  const storeProducts = buildStoreProducts(PRODUCTS, store.stock, 3, store.id);
   const gesture = useSheetGesture(sheetRef, sheetState, onToggle);
 
   return (
@@ -568,9 +568,10 @@ export default function MapScreen({ onNav, onOpenProduct, onOpenStore, onOpenNew
     filterCrewTalkItems(CREW_TALKS, crewTalkQuery),
     crewTalkSortOrder,
   );
+  const bottomNavHidden = sheetState !== 'closed' || crewTalkOpen;
 
   return (
-    <section className="screen active" id="screen-3b" data-scroll-mode="viewport">
+    <section className={`screen active${bottomNavHidden ? ' bottomnav-hidden' : ''}`} id="screen-3b" data-scroll-mode="viewport">
       <div className="map-wrap">
         <div className="map-canvas">
           <div id="kakao-map" ref={mapDivRef} aria-label="충무로 주변 올리브영 실제 지도" />
@@ -633,7 +634,7 @@ export default function MapScreen({ onNav, onOpenProduct, onOpenStore, onOpenNew
           />
         )}
       </div>
-      <BottomNav active="store" onNav={onNav} />
+      <BottomNav active="store" onNav={onNav} hidden={bottomNavHidden} />
     </section>
   );
 }

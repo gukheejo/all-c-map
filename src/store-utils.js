@@ -38,17 +38,45 @@ export function walkingMinutes(kilometers) {
   return Math.max(1, Math.ceil(kilometers / WALKING_KM_PER_MINUTE));
 }
 
-export function buildStoreProducts(products, count, aiLimit = 3) {
+const CONDITION_BADGES = [undefined, '유통기한', '패키지 파손'];
+
+function hashStoreId(storeId) {
+  return [...String(storeId ?? '')].reduce(
+    (hash, character) => Math.imul(hash ^ character.charCodeAt(0), 16777619) >>> 0,
+    2166136261,
+  );
+}
+
+function buildStoreConditions(count, storeId) {
+  const conditions = Array.from(
+    { length: count },
+    (_, index) => CONDITION_BADGES[index % CONDITION_BADGES.length],
+  );
+  let randomState = hashStoreId(storeId);
+
+  for (let index = conditions.length - 1; index > 0; index -= 1) {
+    randomState = (Math.imul(randomState, 1664525) + 1013904223) >>> 0;
+    const swapIndex = randomState % (index + 1);
+    [conditions[index], conditions[swapIndex]] = [conditions[swapIndex], conditions[index]];
+  }
+
+  return conditions;
+}
+
+export function buildStoreProducts(products, count, aiLimit = 3, storeId) {
   if (!products.length || count <= 0) return [];
 
   let aiPicks = 0;
-  return products.slice(0, count).map((source, index) => {
+  const storeProducts = products.slice(0, count);
+  const conditions = buildStoreConditions(storeProducts.length, storeId);
+  return storeProducts.map((source, index) => {
     const showAiPick = source.badge === 'AI PICK' && aiPicks < aiLimit;
     if (showAiPick) aiPicks += 1;
 
     return {
       ...source,
       badge: showAiPick ? source.badge : undefined,
+      badge2: conditions[index],
       listKey: `${source.id}-${index}`,
     };
   });
