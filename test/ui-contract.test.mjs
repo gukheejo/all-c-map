@@ -597,6 +597,8 @@ test('the selected store sheet renders one row per marker stock number', () => {
 
   assert.equal((html.match(/class="crew-item"/g) ?? []).length, 7);
   assert.equal((html.match(/class="badge-ai"/g) ?? []).length, 3);
+  assert.equal((html.match(/class="orig"/g) ?? []).length, 7);
+  assert.match(html, /class="orig">44,000원<\/span>/);
   assert.match(html, /class="sheet-notice-card"/);
   assert.match(html, /\[입고알림\] 라스트픽 온라인 입고 완료되었습니다\./);
   assert.match(html, /12분 전/);

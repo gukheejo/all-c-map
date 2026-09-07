@@ -251,6 +251,7 @@ export function StoreSheet({ store, sheetState, onToggle, onOpenProduct, onOpenS
                   {product.badge && <span className="badge-ai">{product.badge}</span>}
                   {product.badge2 && <span className="badge-gray">{product.badge2}</span>}
                 </div>
+                <span className="orig">{won(product.orig)}</span>
                 <div className="price-row">
                   <span className="stock">잔여 재고 | {product.stock}개</span>
                   <span className="now"><span className="pct">{product.pct}%</span>{won(product.price)}</span>
