@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { StoreHome, ProductPlaceholder, StoreDetail, Cart } from './components/Screens.jsx';
+import { StoreHome, ProductPlaceholder, StoreDetail, StoreNews, Cart } from './components/Screens.jsx';
 import MapScreen from './components/MapScreen.jsx';
 import { Dim, PickupSheet, ConfirmDialog, BarcodeCard } from './components/Overlays.jsx';
 import { PRODUCTS, MAIN_STORE } from './data.js';
@@ -28,6 +28,16 @@ export default function App() {
   function openStore(store) {
     setDetailStore(store);
     setScreen('4');
+  }
+
+  function openStoreNews(store) {
+    setDetailStore(store);
+    setToastShown(false);
+    setScreen('3.5a');
+  }
+
+  function changeStoreNewsTab(tab) {
+    setScreen(tab === 'crew' ? '3.5b' : '3.5a');
   }
 
   function openPickup(id) {
@@ -108,8 +118,18 @@ export default function App() {
             store={detailStore}
             onNav={goNav}
             onOrder={openPickup}
+            onOpenNews={openStoreNews}
             toastShown={toastShown}
             onGoCart={goCartFromToast}
+          />
+        )}
+        {(screen === '3.5a' || screen === '3.5b') && (
+          <StoreNews
+            store={detailStore}
+            tab={screen === '3.5b' ? 'crew' : 'notice'}
+            onBack={() => setScreen('4')}
+            onTabChange={changeStoreNewsTab}
+            onNav={goNav}
           />
         )}
         {screen === '6' && <Cart onNav={goNav} cart={cart} onQtyChange={cartQtyChange} onPurchase={purchase} />}

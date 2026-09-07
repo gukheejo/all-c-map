@@ -28,12 +28,34 @@ export const PRODUCTS = [
   { id: 'p5', name: '[베이스1위] 더샘 커버 퍼펙션 트리플 팟 컨실러', variant: '01 코렉트 베이지', img: '/photos/product-5.png', orig: 12000, price: 4800, pct: 60, stock: 2 },
 ];
 
+export const STORE_NEWS_TALKS = [
+  { id: 'store-talk-p1', product: PRODUCTS[0], date: '2026.08.19', message: PRODUCTS[0].talk },
+  { id: 'store-talk-p2', product: PRODUCTS[1], date: '2026.08.19', message: '패키지 미세 파손으로 사용에 문제 없는 제품입니다!' },
+  { id: 'store-talk-p3', product: PRODUCTS[2], date: '2026.08.16', message: PRODUCTS[2].talk },
+  { id: 'store-talk-p4', product: PRODUCTS[3], date: '2026.08.12', message: '뽑하고 사용하면 마스카라처럼 가닥 속눈썹 연출 가능해요! 속눈썹 풍성해지는 매력까지...♡' },
+  { id: 'store-talk-p5', product: PRODUCTS[4], date: '2026.08.12', message: '다크서클 커버할 때 필수예요! 화홍 258 브러쉬와 궁합이 좋아요.' },
+  { id: 'store-talk-p6', product: PRODUCTS[0], date: '2026.08.10', message: '차분한 생기를 더해주는 컬러라 데일리 치크로 추천드려요.' },
+  { id: 'store-talk-p7', product: PRODUCTS[1], date: '2026.08.09', message: '얇게 여러 번 레이어링하면 분위기 있는 가을 메이크업이 완성돼요.' },
+  { id: 'store-talk-p8', product: PRODUCTS[2], date: '2026.08.08', message: '화장솜에 듬뿍 적셔 토너팩으로 사용하면 피부 진정에 좋아요.' },
+  { id: 'store-talk-p9', product: PRODUCTS[3], date: '2026.08.06', message: '매일 꾸준히 사용하기 편한 브러시 타입 속눈썹 영양제예요.' },
+  { id: 'store-talk-p10', product: PRODUCTS[4], date: '2026.08.04', message: '세 가지 컬러를 섞어 쓰면 잡티와 다크서클을 자연스럽게 커버할 수 있어요.' },
+  { id: 'store-talk-p11', product: PRODUCTS[0], date: '2026.08.01', message: '맑게 올라오는 피치 컬러로 지금 매장에서 만나보실 수 있어요.' },
+];
+
 export const CREW_TALKS = [
   { id: 'talk-p1', product: PRODUCTS[0], store: STORES[0], date: '2026.08.19', message: PRODUCTS[0].talk },
   { id: 'talk-p4', product: PRODUCTS[3], store: { name: '명동거리점' }, date: '2026.08.12', message: '뽑하고 사용하면 마스카라처럼 가닥 속눈썹 연출 가능해요! 속눈썹 풍성해지는 매력까지...♡' },
   { id: 'talk-p5', product: PRODUCTS[4], store: STORES[7], date: '2026.08.12', message: '다크서클 커버할 때 필수예요! 화홍 258 브러쉬와 궁합이 좋아요.' },
   { id: 'talk-p3', product: PRODUCTS[2], store: STORES[3], date: '2026.08.16', message: PRODUCTS[2].talk },
   { id: 'talk-p2', product: PRODUCTS[1], store: STORES[4], date: '2026.08.19', message: '컬러가 분위기 있게 올라와서 가을 메이크업에 추천해요. 얇게 여러 번 발라보세요.' },
+];
+
+export const STORE_NOTICES = [
+  { id: 'notice-1', date: '2026.08.19', message: '[입고알림] 라스트픽 온라인 입고 완료되었습니다.' },
+  { id: 'notice-2', date: '2026.08.19', message: '[운영안내] 금일 재고 점검으로 픽업 수령이 20분 가량 지연될 수 있습니다.' },
+  { id: 'notice-3', date: '2026.08.12', message: '[입고알림] 라스트픽 오프라인 입고 완료되었습니다.' },
+  { id: 'notice-4', date: '2026.08.12', message: '[입고알림] 라스트픽 온라인 입고 완료되었습니다.' },
+  { id: 'notice-5', date: '2026.08.01', message: '[운영안내] 매장 오픈 시간 : 오전 09:00 ~ 오후 10:30' },
 ];
 
 export const won = (n) => n.toLocaleString('ko-KR') + '원';
