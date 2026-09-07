@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import BottomNav from './BottomNav.jsx';
+import { loadKakaoMaps } from '../kakao-map.js';
 import { PRODUCTS, STORES, STORE_NEWS_TALKS, STORE_NOTICES, won, MAIN_STORE } from '../data.js';
 import {
   FIXED_LOCATION,
@@ -9,6 +10,78 @@ import {
   toggleExpandedId,
   walkingMinutes,
 } from '../store-utils.js';
+
+export function getStorePreviewCenter(store) {
+  return { lat: store.lat, lng: store.lng };
+}
+
+export function KakaoStorePreviewMap({ store }) {
+  const mapElementRef = useRef(null);
+  const [mapReady, setMapReady] = useState(false);
+  const [mapError, setMapError] = useState('');
+
+  useEffect(() => {
+    let disposed = false;
+    let overlay;
+
+    loadKakaoMaps(import.meta.env.VITE_KAKAO_MAP_KEY)
+      .then((maps) => {
+        if (disposed || !mapElementRef.current) return;
+
+        const previewCenter = getStorePreviewCenter(store);
+        const center = new maps.LatLng(previewCenter.lat, previewCenter.lng);
+        const map = new maps.Map(mapElementRef.current, {
+          center,
+          level: 4,
+          draggable: false,
+          scrollwheel: false,
+          disableDoubleClick: true,
+          disableDoubleClickZoom: true,
+          keyboardShortcuts: false,
+        });
+        map.setDraggable(false);
+        map.setZoomable(false);
+
+        const pin = document.createElement('div');
+        pin.className = 'pin';
+        const label = document.createElement('span');
+        label.className = 'pin-label';
+        label.textContent = store.name;
+        const stock = document.createElement('span');
+        stock.className = 'pin-stock';
+        stock.textContent = String(store.stock);
+        pin.append(label, stock);
+
+        overlay = new maps.CustomOverlay({
+          map,
+          position: new maps.LatLng(store.lat, store.lng),
+          content: pin,
+          xAnchor: 0.5,
+          yAnchor: 0.5,
+          zIndex: 2,
+        });
+
+        setMapReady(true);
+        setMapError('');
+      })
+      .catch((error) => {
+        if (!disposed) setMapError(error.message);
+      });
+
+    return () => {
+      disposed = true;
+      overlay?.setMap(null);
+    };
+  }, [store]);
+
+  return (
+    <div className="reco-map" data-map-provider="kakao" aria-label="충무로 주변 카카오 지도">
+      <div className="reco-map-canvas" ref={mapElementRef} />
+      <span className="sr-only">{store.name}, 재고 {store.stock}개</span>
+      {!mapReady && <span className="reco-map-loading">{mapError || '지도를 불러오는 중이에요.'}</span>}
+    </div>
+  );
+}
 
 export function StoreHome({ onNav }) {
   const [expandedTalkIds, setExpandedTalkIds] = useState([]);
@@ -48,12 +121,7 @@ export function StoreHome({ onNav }) {
         <section className="store-recommendations">
           <h2 className="reco-title">정열창님,<br />도보 <b>{walkingMinutes(nearestDistance)}</b>분 거리에서 득템해보세요!</h2>
           <span className="sr-only">{FIXED_LOCATION.address}</span>
-          <div className="reco-map" aria-label={`${FIXED_LOCATION.address} 기준 ${nearestStore.name}`}>
-            <div className="pin">
-              <span className="pin-label">{nearestStore.name}</span>
-              <span className="pin-stock">{nearestStore.stock}</span>
-            </div>
-          </div>
+          <KakaoStorePreviewMap store={nearestStore} />
 
           <div className="reco-list">
             {recommendations.map(({ label, product }) => (

@@ -6,4 +6,5 @@ dist/
 *.vanilla-backup
 .env
 .env.*
+!.env.example
 .claude/

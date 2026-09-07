@@ -1,6 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import * as maplibregl from 'maplibre-gl';
-import 'maplibre-gl/dist/maplibre-gl.css';
 import { CREW_TALKS, STORES, PRODUCTS, won } from '../data.js';
 import {
   FIXED_LOCATION,
@@ -11,41 +9,14 @@ import {
   toggleExpandedId,
 } from '../store-utils.js';
 import BottomNav from './BottomNav.jsx';
+import { loadKakaoMaps } from '../kakao-map.js';
 
 export { selectNearestStores } from '../store-utils.js';
+export { loadKakaoMaps } from '../kakao-map.js';
 
 const CENTER = FIXED_LOCATION;
 const STORE_LIMIT = 10;
 const SELECTED_MARKER_GAP = 80;
-const MAP_BOUNDS = [[126.965, 37.545], [127.02, 37.58]];
-const MAP_STYLE = {
-  version: 8,
-  sources: {
-    chungmuro: {
-      type: 'raster',
-      tiles: ['/map-tiles/{z}/{x}/{y}.png'],
-      tileSize: 256,
-      minzoom: 12,
-      maxzoom: 16,
-      bounds: [126.965, 37.545, 127.02, 37.58],
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles by <a href="https://www.hotosm.org/">HOT</a>',
-    },
-  },
-  layers: [
-    {
-      id: 'chungmuro-map',
-      type: 'raster',
-      source: 'chungmuro',
-      paint: {
-        'raster-saturation': -0.3,
-        'raster-contrast': -0.05,
-        'raster-brightness-min': 0.04,
-        'raster-brightness-max': 1,
-      },
-    },
-  ],
-};
-
 export function getStoreBounds(stores) {
   return stores.reduce(
     (bounds, store) => [
@@ -61,13 +32,13 @@ export function getSelectedMarkerOffset(mapHeight, sheetHeight) {
   return [0, Math.round(desiredMarkerY - mapHeight / 2)];
 }
 
-export function getSelectedCameraOptions(store, mapHeight, sheetHeight) {
-  return {
-    center: [store.lng, store.lat],
-    offset: getSelectedMarkerOffset(mapHeight, sheetHeight),
-    zoom: 15.5,
-    duration: 450,
-  };
+export function getKakaoSelectedPanOffset(mapHeight, sheetHeight) {
+  const [, markerOffsetY] = getSelectedMarkerOffset(mapHeight, sheetHeight);
+  return { x: 0, y: -markerOffsetY };
+}
+
+export function limitInitialZoomLevel(fittedLevel, closestAllowedLevel = 5) {
+  return Math.min(fittedLevel, closestAllowedLevel);
 }
 
 function makePinElement(store, selected, onClick) {
@@ -325,37 +296,67 @@ export default function MapScreen({ onNav, onOpenProduct, onOpenStore, initialSe
   const [crewTalkOpen, setCrewTalkOpen] = useState(false);
   const [crewTalkQuery, setCrewTalkQuery] = useState('');
   const [expandedTalkIds, setExpandedTalkIds] = useState([]);
+  const [mapReady, setMapReady] = useState(false);
+  const [mapError, setMapError] = useState('');
 
   useEffect(() => {
     if (mapRef.current || !mapDivRef.current) return;
+    let disposed = false;
+    let resizeObserver;
+    let map;
+    let maps;
 
-    const map = new maplibregl.Map({
-      container: mapDivRef.current,
-      style: MAP_STYLE,
-      center: [CENTER.lng, CENTER.lat],
-      zoom: 14.25,
-      minZoom: 12,
-      maxZoom: 19,
-      maxBounds: MAP_BOUNDS,
-      attributionControl: false,
-      localIdeographFontFamily: "'Pretendard', 'Apple SD Gothic Neo', sans-serif",
-    });
+    const onMoveStart = () => setShowSearchButton(true);
+    const onMapClick = () => closeSelectedStoreRef.current();
 
-    map.on('dragstart', () => setShowSearchButton(true));
-    map.on('zoomstart', () => setShowSearchButton(true));
-    map.on('click', () => closeSelectedStoreRef.current());
-    map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
-    map.fitBounds(getStoreBounds(selectNearestStores(STORES, CENTER)), {
-      padding: { top: 140, right: 24, bottom: 90, left: 24 },
-      maxZoom: 14.25,
-      duration: 0,
-    });
-    mapRef.current = map;
+    loadKakaoMaps(import.meta.env.VITE_KAKAO_MAP_KEY)
+      .then((loadedMaps) => {
+        if (disposed || !mapDivRef.current) return;
+        maps = loadedMaps;
+        const fixedCenter = new maps.LatLng(CENTER.lat, CENTER.lng);
+        map = new maps.Map(mapDivRef.current, {
+          center: fixedCenter,
+          level: 5,
+        });
+        map.setMinLevel(1);
+        map.setMaxLevel(9);
+
+        maps.event.addListener(map, 'dragstart', onMoveStart);
+        maps.event.addListener(map, 'zoom_start', onMoveStart);
+        maps.event.addListener(map, 'click', onMapClick);
+
+        const bounds = new maps.LatLngBounds();
+        bounds.extend(fixedCenter);
+        selectNearestStores(STORES, CENTER).forEach((store) => {
+          bounds.extend(new maps.LatLng(store.lat, store.lng));
+        });
+        map.setBounds(bounds, 140, 24, 90, 24);
+        map.setLevel(limitInitialZoomLevel(map.getLevel()));
+        map.setCenter(fixedCenter);
+
+        mapRef.current = map;
+        setMapReady(true);
+        setMapError('');
+
+        if (typeof ResizeObserver !== 'undefined') {
+          resizeObserver = new ResizeObserver(() => map.relayout());
+          resizeObserver.observe(mapDivRef.current);
+        }
+      })
+      .catch((error) => {
+        if (!disposed) setMapError(error.message);
+      });
 
     return () => {
-      markersRef.current.forEach((marker) => marker.remove());
+      disposed = true;
+      markersRef.current.forEach((marker) => marker.setMap(null));
       markersRef.current = [];
-      map.remove();
+      resizeObserver?.disconnect();
+      if (map && maps) {
+        maps.event.removeListener(map, 'dragstart', onMoveStart);
+        maps.event.removeListener(map, 'zoom_start', onMoveStart);
+        maps.event.removeListener(map, 'click', onMapClick);
+      }
       mapRef.current = null;
     };
   }, []);
@@ -377,24 +378,31 @@ export default function MapScreen({ onNav, onOpenProduct, onOpenStore, initialSe
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+    const maps = window.kakao.maps;
 
     const renderMarkers = () => {
-      markersRef.current.forEach((marker) => marker.remove());
+      markersRef.current.forEach((marker) => marker.setMap(null));
       markersRef.current = visibleStores.map((store) => {
         const element = makePinElement(store, store.id === selectedId, (id) => selectStoreRef.current(id));
-        return new maplibregl.Marker({ element, anchor: 'bottom' })
-          .setLngLat([store.lng, store.lat])
-          .addTo(map);
+        return new maps.CustomOverlay({
+          map,
+          position: new maps.LatLng(store.lat, store.lng),
+          content: element,
+          xAnchor: 0.5,
+          yAnchor: 1,
+          clickable: true,
+          zIndex: store.id === selectedId ? 20 : 3,
+        });
       });
     };
 
     renderMarkers();
 
     return () => {
-      markersRef.current.forEach((marker) => marker.remove());
+      markersRef.current.forEach((marker) => marker.setMap(null));
       markersRef.current = [];
     };
-  }, [visibleStores, selectedId]);
+  }, [visibleStores, selectedId, mapReady]);
 
   const selectedStore = STORES.find((store) => store.id === selectedId);
 
@@ -404,9 +412,13 @@ export default function MapScreen({ onNav, onOpenProduct, onOpenStore, initialSe
     const animationFrame = requestAnimationFrame(() => {
       const map = mapRef.current;
       if (!map) return;
-      const mapHeight = map.getContainer().clientHeight;
+      const mapHeight = mapDivRef.current?.clientHeight ?? window.innerHeight;
       const sheetHeight = sheetRef.current?.offsetHeight ?? 400;
-      map.easeTo(getSelectedCameraOptions(selectedStore, mapHeight, sheetHeight));
+      const maps = window.kakao.maps;
+      const offset = getKakaoSelectedPanOffset(mapHeight, sheetHeight);
+      map.setLevel(4, { anchor: new maps.LatLng(selectedStore.lat, selectedStore.lng) });
+      map.setCenter(new maps.LatLng(selectedStore.lat, selectedStore.lng));
+      map.panBy(offset.x, offset.y);
     });
 
     return () => cancelAnimationFrame(animationFrame);
@@ -415,7 +427,7 @@ export default function MapScreen({ onNav, onOpenProduct, onOpenStore, initialSe
   function searchThisArea() {
     const center = mapRef.current?.getCenter();
     if (center) {
-      setVisibleStores(selectNearestStores(STORES, { lat: center.lat, lng: center.lng }));
+      setVisibleStores(selectNearestStores(STORES, { lat: center.getLat(), lng: center.getLng() }));
     }
     setSelectedId(null);
     setSheetState('closed');
@@ -436,7 +448,8 @@ export default function MapScreen({ onNav, onOpenProduct, onOpenStore, initialSe
     <section className="screen active" id="screen-3b">
       <div className="map-wrap">
         <div className="map-canvas">
-          <div id="maplibre-map" ref={mapDivRef} aria-label="충무로 주변 올리브영 실제 지도" />
+          <div id="kakao-map" ref={mapDivRef} aria-label="충무로 주변 올리브영 실제 지도" />
+          {!mapReady && <div className="map-load-state" role="status">{mapError || '지도를 불러오는 중이에요.'}</div>}
           {(showAiBanner || selectedStore || crewTalkOpen) && <img className="map-dim-art" src="/icons/map-dim-screen.svg" alt="" />}
         </div>
 

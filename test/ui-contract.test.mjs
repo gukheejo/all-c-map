@@ -23,16 +23,20 @@ const {
   CrewTalkSheet,
   default: MapScreen,
   StoreSheet,
-  getSelectedCameraOptions,
+  getKakaoSelectedPanOffset,
   getSelectedMarkerOffset,
   getStoreBounds,
+  limitInitialZoomLevel,
+  loadKakaoMaps,
 } = mapModule;
 const {
   Cart,
+  KakaoStorePreviewMap,
   StoreDetail,
   StoreHome,
   StoreNews,
   StoreNewsTabs,
+  getStorePreviewCenter,
   updateStoreNewsQueries,
 } = await vite.ssrLoadModule('/src/components/Screens.jsx');
 const { BarcodeCard, PickupSheet } = await vite.ssrLoadModule('/src/components/Overlays.jsx');
@@ -102,13 +106,34 @@ test('the All-C-Map quick tile uses the clover artwork and recommendation copy s
   assert.equal((html.match(/aria-expanded="false"/g) ?? []).length, 2);
 });
 
-test('the Figma quick tile and map stock badge use separate visual layers', () => {
+test('the Figma quick tile stays separate from the accessible Kakao preview marker', () => {
   const html = renderToStaticMarkup(
     React.createElement(StoreHome, { onNav() {} }),
   );
 
   assert.match(html, /class="ic"><span class="olcl-art"><img src="\/icons\/qm-clover\.png"/);
-  assert.match(html, /class="pin"><span class="pin-label">올리브영 충무로역점<\/span><span class="pin-stock">7<\/span>/);
+  assert.match(html, /data-map-provider="kakao"/);
+  assert.match(html, /올리브영 충무로역점, 재고 7개/);
+});
+
+test('the store entry page renders its preview on a Kakao map surface', () => {
+  assert.equal(typeof KakaoStorePreviewMap, 'function');
+
+  const html = renderToStaticMarkup(
+    React.createElement(KakaoStorePreviewMap, { store: STORES[1] }),
+  );
+
+  assert.match(html, /data-map-provider="kakao"/);
+  assert.match(html, /aria-label="충무로 주변 카카오 지도"/);
+  assert.match(html, /올리브영 충무로역점/);
+});
+
+test('the compact Kakao preview centers the selected store inside its short viewport', () => {
+  assert.equal(typeof getStorePreviewCenter, 'function');
+  assert.deepEqual(getStorePreviewCenter(STORES[1]), {
+    lat: 37.5615827,
+    lng: 126.9962525,
+  });
 });
 
 test('a Crew Talk item toggles independently between collapsed and expanded', () => {
@@ -173,16 +198,17 @@ test('the map uses a live map surface and the exact Figma dim layer', () => {
     React.createElement(MapScreen, { onNav() {}, onOpenProduct() {} }),
   );
 
-  assert.match(html, /id="maplibre-map"/);
+  assert.match(html, /id="kakao-map"/);
   assert.match(html, /src="\/icons\/map-dim-screen\.svg"/);
   assert.doesNotMatch(html, /figma-myeongdong-map/);
 });
 
-test('the real map tiles are served locally so the map opens without a third-party runtime request', async () => {
-  const source = await readFile(new URL('../src/components/MapScreen.jsx', import.meta.url), 'utf8');
-
-  assert.match(source, /\/map-tiles\/\{z\}\/\{x\}\/\{y\}\.png/);
-  assert.doesNotMatch(source, /style:\s*['"]https:\/\//);
+test('the Kakao map loader rejects a missing JavaScript key with an actionable error', async () => {
+  assert.equal(typeof loadKakaoMaps, 'function');
+  await assert.rejects(
+    loadKakaoMaps(''),
+    /VITE_KAKAO_MAP_KEY/,
+  );
 });
 
 test('the live map limits visible stores to the nearest ten', () => {
@@ -510,23 +536,21 @@ test('the selected marker offset places it above a responsive bottom sheet', () 
   assert.deepEqual(getSelectedMarkerOffset(448, 307), [0, -163]);
 });
 
-test('the selected camera centers every store above the sheet', () => {
-  for (const store of STORES) {
-    assert.deepEqual(getSelectedCameraOptions(store, 754, 400), {
-      center: [store.lng, store.lat],
-      offset: [0, -103],
-      zoom: 15.5,
-      duration: 450,
-    });
-  }
+test('the Kakao camera pans the selected marker above the sheet', () => {
+  assert.deepEqual(getKakaoSelectedPanOffset(754, 400), { x: 0, y: 103 });
+  assert.deepEqual(getKakaoSelectedPanOffset(448, 307), { x: 0, y: 163 });
 });
 
-test('the initial map viewport can fit all ten nearby stores', async () => {
+test('the initial map viewport can fit all ten nearby stores', () => {
   const nearest = selectNearestStores(STORES, { lat: 37.5605, lng: 126.9948 }, 10);
   assert.deepEqual(getStoreBounds(nearest), [[126.977, 37.5606047], [127.0074, 37.5658]]);
+});
 
-  const source = await readFile(new URL('../src/components/MapScreen.jsx', import.meta.url), 'utf8');
-  assert.match(source, /map\.fitBounds/);
+test('the initial Kakao map view never opens wider than level five', () => {
+  assert.equal(typeof limitInitialZoomLevel, 'function');
+  assert.equal(limitInitialZoomLevel(7), 5);
+  assert.equal(limitInitialZoomLevel(5), 5);
+  assert.equal(limitInitialZoomLevel(4), 4);
 });
 
 test('the home tab uses the Figma outline-home artwork', () => {
