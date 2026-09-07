@@ -1,3 +1,5 @@
+import { EXCLUSIVE_PRODUCTS } from './data.js';
+
 export const FIXED_LOCATION = Object.freeze({
   address: '서울시 중구 필동로 26 (필동2가 101-1)',
   lat: 37.559175,
@@ -94,16 +96,29 @@ export function buildStoreProducts(products, count, aiLimit = 3, storeContext) {
     return {
       ...source,
       badge: showAiPick ? source.badge : undefined,
-      badge2: conditions[index],
+      badge2: source.exclusive ? source.badge2 : conditions[index],
       talk: buildStoreCrewTalk(source, storeContext, index),
       listKey: `${source.id}-${index}`,
     };
   });
 }
 
+export function resolveStoreCatalog(products, store, exclusives = EXCLUSIVE_PRODUCTS) {
+  const exclusiveIds = store?.exclusiveProductIds ?? [];
+  if (!exclusiveIds.length) return products;
+
+  const pinned = exclusiveIds
+    .map((id) => exclusives.find((product) => product.id === id))
+    .filter(Boolean);
+  const pinnedIds = new Set(pinned.map((product) => product.id));
+
+  return [...pinned, ...products.filter((product) => !pinnedIds.has(product.id))];
+}
+
 export function buildStoreProductsForStore(products, store, aiLimit = 3) {
   if (!store) return [];
-  return buildStoreProducts(products, store.stock, store.ai ? aiLimit : 0, store);
+  const catalog = resolveStoreCatalog(products, store);
+  return buildStoreProducts(catalog, store.stock, store.ai ? aiLimit : 0, store);
 }
 
 export function toggleExpandedId(expandedIds, id) {

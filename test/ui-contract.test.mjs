@@ -46,7 +46,7 @@ const {
   updateStoreNewsQueries,
 } = await vite.ssrLoadModule('/src/components/Screens.jsx');
 const { BarcodeCard, PickupSheet } = await vite.ssrLoadModule('/src/components/Overlays.jsx');
-const { CREW_TALKS, STORES, PRODUCTS, STORE_NEWS_TALKS, STORE_NOTICES, getStoreNewsForStore } = await vite.ssrLoadModule('/src/data.js');
+const { CREW_TALKS, EXCLUSIVE_PRODUCTS, STORES, PRODUCTS, STORE_NEWS_TALKS, STORE_NOTICES, getStoreNewsForStore } = await vite.ssrLoadModule('/src/data.js');
 const {
   FIXED_LOCATION,
   buildStoreProducts,
@@ -57,6 +57,7 @@ const {
   formatDistance,
   filterCrewTalkItems,
   resolveSheetSnap,
+  resolveStoreCatalog,
   selectNearestStores,
   sortDatedItems,
   toggleExpandedId,
@@ -194,7 +195,7 @@ test('the Figma quick tile stays separate from the accessible Kakao preview mark
 
   assert.match(html, /class="ic"><span class="olcl-art"><img src="\/icons\/qm-clover\.png"/);
   assert.match(html, /data-map-provider="kakao"/);
-  assert.match(html, /올리브영 CJ인재원점, 재고 2개/);
+  assert.match(html, /올리브영 CJ인재원점, 재고 8개/);
 });
 
 test('the store home keeps the CJ training center in its map preview', () => {
@@ -435,8 +436,9 @@ test('the CJ training center store appears first at the fixed Pildong address', 
     addr: '서울특별시 중구 필동로 26 (필동2가 101-1)',
     lat: 37.559175,
     lng: 126.995635,
-    stock: 2,
+    stock: 8,
     ai: true,
+    exclusiveProductIds: ['ONLYONEFAIR-CLOVER-MAP'],
   }]);
 });
 
@@ -514,7 +516,7 @@ test('only AI PICK stores expose AI PICK products throughout the store flow', ()
   const standardRows = buildStoreProductsForStore(PRODUCTS, standardStore);
 
   assert.equal(aiStore.ai, true);
-  assert.equal(aiRows.filter((product) => product.badge === 'AI PICK').length, 2);
+  assert.equal(aiRows.filter((product) => product.badge === 'AI PICK').length, 3);
   assert.equal(standardRows.some((product) => product.badge === 'AI PICK'), false);
 });
 
@@ -1140,4 +1142,66 @@ test('bottom navigation slides below the viewport while a bottom sheet is open',
   assert.match(storeWithPickupSheet, /class="bottomnav is-hidden"/);
   assert.match(styles, /\.bottomnav\.is-hidden\{[^}]*translateY\(100%\)[^}]*pointer-events:none/);
   assert.match(styles, /#stage\[data-layout="document"\] \.bottomnav\.is-hidden\{[^}]*translate\(-50%,100%\)/);
+});
+
+test('the ONLYONEFAIR clover postcard set is a free CJ training center exclusive', () => {
+  const postcard = EXCLUSIVE_PRODUCTS.find((product) => product.id === 'ONLYONEFAIR-CLOVER-MAP');
+
+  assert.ok(postcard);
+  assert.equal(postcard.name, '[온페한정] 행운만땅 올클맵 엽서 기획세트');
+  assert.equal(postcard.img, '/photos/product-clover-postcard.jpg');
+  assert.equal(postcard.orig, 7770000);
+  assert.equal(postcard.price, 0);
+  assert.equal(postcard.pct, 100);
+  assert.ok(postcard.stock >= 1);
+  assert.equal(PRODUCTS.some((product) => product.id === postcard.id), false);
+});
+
+test('only the CJ training center pins the exclusive postcard onto its catalog', () => {
+  const cjStore = STORES.find((store) => store.id === 'cj-training-center');
+
+  assert.deepEqual(cjStore.exclusiveProductIds, ['ONLYONEFAIR-CLOVER-MAP']);
+  assert.equal(
+    STORES.filter((store) => store.exclusiveProductIds?.length).length,
+    1,
+  );
+  assert.equal(resolveStoreCatalog(PRODUCTS, STORES[0]), PRODUCTS);
+  assert.equal(resolveStoreCatalog(PRODUCTS, cjStore)[0].id, 'ONLYONEFAIR-CLOVER-MAP');
+});
+
+test('the CJ training center lists eight rows led by the exclusive postcard', () => {
+  const cjStore = STORES.find((store) => store.id === 'cj-training-center');
+  const rows = buildStoreProductsForStore(PRODUCTS, cjStore);
+
+  assert.equal(cjStore.stock, 8);
+  assert.equal(rows.length, 8);
+  assert.equal(new Set(rows.map((product) => product.id)).size, 8);
+  assert.equal(rows[0].id, 'ONLYONEFAIR-CLOVER-MAP');
+  assert.equal(rows[0].badge2, undefined);
+  assert.deepEqual(
+    rows.slice(1).map((product) => product.id),
+    PRODUCTS.slice(0, 7).map((product) => product.id),
+  );
+  assert.equal(
+    STORES
+      .filter((store) => store.id !== 'cj-training-center')
+      .some((store) => buildStoreProductsForStore(PRODUCTS, store)
+        .some((product) => product.id === 'ONLYONEFAIR-CLOVER-MAP')),
+    false,
+  );
+});
+
+test('the exclusive postcard detail page shows the 100% discounted price', () => {
+  const cjStore = STORES.find((store) => store.id === 'cj-training-center');
+  const postcard = buildStoreProductsForStore(PRODUCTS, cjStore)[0];
+  const html = renderToStaticMarkup(
+    React.createElement(ProductDetail, { product: postcard, store: cjStore, onBack() {}, onOrder() {} }),
+  );
+
+  assert.match(html, /7,770,000원/);
+  assert.match(html, /100%/);
+  assert.match(html, /<b>0원<\/b>/);
+  assert.match(html, /\[온페한정\] 행운만땅 올클맵 엽서 기획세트/);
+  assert.match(html, /src="\/photos\/product-clover-postcard\.jpg"/);
+  assert.match(html, /올리브영 CJ인재원점/);
 });

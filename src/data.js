@@ -17,7 +17,7 @@ export const STORES = [
   { id: 'central', name: '올리브영 센트럴 명동 타운', addr: '서울특별시 중구 명동8길 27 (엠플라자)', lat: 37.5616385, lng: 126.9849097, stock: 13, photo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSLtsfJCgDAu3osuVzwlGP6Km5zsM1wueztBXTrqsloQw&s=10' },
   { id: 'timewalk', name: '올리브영 명동타임워크점', addr: '서울특별시 중구 남대문로 78', lat: 37.5643473, lng: 126.9829236, stock: 8, photo: 'https://image.oliveyoung.co.kr/cfimages/oystore/DD6F_1.jpg?RS=1024x0&QT=85' },
   { id: 'myeongdong2ga', name: '올리브영 명동2가점', addr: '서울특별시 중구 남대문로 68-1', lat: 37.5632324, lng: 126.9822809, stock: 6, photo: 'https://image.oliveyoung.co.kr/cfimages/oystore/DF23_2025071831621131.png?rs=1200x0&sf=webp&autoorient=y' },
-  { id: 'cj-training-center', name: '올리브영 CJ인재원점', addr: '서울특별시 중구 필동로 26 (필동2가 101-1)', lat: 37.559175, lng: 126.995635, stock: 2, ai: true },
+  { id: 'cj-training-center', name: '올리브영 CJ인재원점', addr: '서울특별시 중구 필동로 26 (필동2가 101-1)', lat: 37.559175, lng: 126.995635, stock: 8, ai: true, exclusiveProductIds: ['ONLYONEFAIR-CLOVER-MAP'] },
 ];
 
 export const PRODUCTS = [
@@ -116,6 +116,17 @@ export const PRODUCTS = [
     orig: 33000, price: 21000, pct: 36, stock: 1, badge2: '유통기한',
     summary: '얇고 균일하게 밀착되어 매끈한 피부 표현을 돕는 쿠션 기획입니다.',
     talk: '소량만 퍼프에 묻혀 얇게 두드리면 들뜨지 않고 매끈한 피부 표현이 완성돼요. 커버가 더 필요한 부분만 한 번 더 레이어링하면 두께감은 줄이면서 오랜 시간 깔끔한 베이스를 유지할 수 있어요.',
+  },
+];
+
+// 온페(ONLYONEFAIR) 기간 CJ인재원점에서만 픽업할 수 있는 한정 기획으로, 15종 정규 카탈로그와 분리해 둔다.
+export const EXCLUSIVE_PRODUCTS = [
+  {
+    id: 'ONLYONEFAIR-CLOVER-MAP', brand: '올리브영', name: '[온페한정] 행운만땅 올클맵 엽서 기획세트', variant: '올클맵 QR 엽서 1매 + 네 잎 클로버 클립 1개',
+    img: '/photos/product-clover-postcard.jpg',
+    orig: 7770000, price: 0, pct: 100, stock: 7, exclusive: true,
+    summary: 'ONLYONEFAIR 잘8영 부스(A111)에서만 만나는 올클맵 한정 기획세트입니다. 뒷면 QR을 찍으면 올클맵이 바로 열리는 엽서 1매와 네 잎 클로버 클립 1개로 구성되어 있고, CJ인재원점 픽업으로만 수령할 수 있습니다.',
+    talk: '온페 기간 동안 CJ인재원점에서만 픽업할 수 있는 한정 세트예요. 엽서 뒷면 QR을 찍으면 바로 올클맵이 열리고, 함께 들어 있는 클로버 클립은 다이어리나 텀블러에 달아 두기 좋아요.',
   },
 ];
 
