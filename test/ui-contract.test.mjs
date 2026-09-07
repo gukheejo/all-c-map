@@ -487,6 +487,18 @@ test('product Crew Talk cards are distributed through the store list', () => {
   assert.ok(PRODUCTS.slice(0, 8).some((product) => !product.talk));
 });
 
+test('the same product gets stable, distinct Crew Talk copy for every store', () => {
+  const messages = STORES.map((store) => (
+    buildStoreProductsForStore(PRODUCTS, { ...store, stock: 1 })[0].talk
+  ));
+  const townMessage = buildStoreProductsForStore(PRODUCTS, { ...STORES[0], stock: 1 })[0].talk;
+
+  assert.equal(new Set(messages).size, STORES.length);
+  assert.equal(townMessage, messages[0]);
+  assert.match(messages[0], /명동 타운/);
+  assert.match(messages[1], /충무로역점/);
+});
+
 test('a generated store product list exposes at most three AI PICK labels', () => {
   const rows = buildStoreProducts(PRODUCTS, 32);
   assert.equal(rows.filter((product) => product.badge === 'AI PICK').length, 3);
@@ -629,6 +641,19 @@ test('only selected AI PICK markers use the dark green-highlighted state', async
   assert.match(styles, /\.map-marker\.ai\.selected \.map-marker-badge\{[^}]*background:var\(--ai-green\)/);
   assert.doesNotMatch(styles, /\.map-marker\.selected \.map-marker-label\{[^}]*background:#222/);
   assert.doesNotMatch(styles, /\.map-marker\.selected \.map-marker-badge\{[^}]*background:var\(--ai-green\)/);
+});
+
+test('the AI PICK store preview uses the same two-pixel green stroke as the map marker', async () => {
+  const styles = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8');
+
+  assert.match(styles, /\.reco-map \.pin\{[^}]*border:2px solid var\(--ai-green\)/);
+});
+
+test('stock count badges sit slightly farther right on both map views', async () => {
+  const styles = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8');
+
+  assert.match(styles, /\.reco-map \.pin-stock\{[^}]*right:-2px/);
+  assert.match(styles, /\.map-marker-badge\{[^}]*right:-3px/);
 });
 
 test('expandable Crew Talk keeps its message in the accessible name', () => {
@@ -931,6 +956,12 @@ test('store-detail Crew Talk is constrained to the card width', async () => {
 
   assert.match(styles, /\.pcard \.talk\{[^}]*width:100%[^}]*max-width:100%[^}]*overflow:hidden/);
   assert.match(styles, /\.pcard \.talk \.crewtalk-text\{[^}]*flex:1/);
+});
+
+test('the selected store title keeps the Figma spacing before its chevron', async () => {
+  const styles = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8');
+
+  assert.match(styles, /\.sheet-head \.store-title\{[^}]*gap:10px/);
 });
 
 test('notice and Crew Talk searches keep independent query values', () => {
