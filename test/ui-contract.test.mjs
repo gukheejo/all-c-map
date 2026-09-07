@@ -42,10 +42,11 @@ const {
   StoreNews,
   StoreNewsTabs,
   getStorePreviewCenter,
+  selectHomePreviewStore,
   updateStoreNewsQueries,
 } = await vite.ssrLoadModule('/src/components/Screens.jsx');
 const { BarcodeCard, PickupSheet } = await vite.ssrLoadModule('/src/components/Overlays.jsx');
-const { CREW_TALKS, STORES, PRODUCTS, STORE_NEWS_TALKS, STORE_NOTICES } = await vite.ssrLoadModule('/src/data.js');
+const { CREW_TALKS, STORES, PRODUCTS, STORE_NEWS_TALKS, STORE_NOTICES, getStoreNewsForStore } = await vite.ssrLoadModule('/src/data.js');
 const {
   FIXED_LOCATION,
   buildStoreProducts,
@@ -172,7 +173,7 @@ test('the store home renders the missing Figma sections around the fixed locatio
   assert.equal((html.match(/data-store-benefit="true"/g) ?? []).length, 2);
   assert.equal((html.match(/class="store-gift-notice"/g) ?? []).length, 2);
   assert.match(html, /올리브영 충무로역점/);
-  assert.match(html, /0\.2km/);
+  assert.match(html, /0\.0km/);
 });
 
 test('the All-C-Map quick tile uses the clover artwork and recommendation copy starts collapsed', () => {
@@ -191,7 +192,17 @@ test('the Figma quick tile stays separate from the accessible Kakao preview mark
 
   assert.match(html, /class="ic"><span class="olcl-art"><img src="\/icons\/qm-clover\.png"/);
   assert.match(html, /data-map-provider="kakao"/);
-  assert.match(html, /올리브영 충무로역점, 재고 7개/);
+  assert.match(html, /올리브영 CJ인재원점, 재고 2개/);
+});
+
+test('the store home keeps the CJ training center in its map preview', () => {
+  const stores = [
+    { id: 'closer-store', lat: 37.559175, lng: 126.995635 },
+    { id: 'cj-training-center', lat: 37.56, lng: 126.996 },
+  ];
+
+  assert.equal(typeof selectHomePreviewStore, 'function');
+  assert.equal(selectHomePreviewStore(stores).id, 'cj-training-center');
 });
 
 test('the store entry page renders its preview on a Kakao map surface', () => {
@@ -296,12 +307,12 @@ test('the Crew Talk sheet renders the searchable Figma 3-e feed', () => {
   assert.match(html, /aria-label="크루톡 정렬"/);
   assert.match(html, /value="latest" selected="">최신순/);
   assert.match(html, /value="registered">등록순/);
-  assert.equal((html.match(/class="crew-talk-feed-item"/g) ?? []).length, 10);
-  assert.equal((html.match(/aria-expanded="false"/g) ?? []).length, 10);
+  assert.equal((html.match(/class="crew-talk-feed-item"/g) ?? []).length, 11);
+  assert.equal((html.match(/aria-expanded="false"/g) ?? []).length, 11);
 });
 
 test('the All-C-Map Crew Talk feed aggregates every nearby store', () => {
-  assert.equal(CREW_TALKS.length, 10);
+  assert.equal(CREW_TALKS.length, 11);
   assert.deepEqual(
     new Set(CREW_TALKS.map((item) => item.store.id)),
     new Set(STORES.map((store) => store.id)),
@@ -411,19 +422,40 @@ test('the live map limits visible stores to the nearest ten', () => {
   assert.equal(new Set(nearest.map((store) => store.id)).size, 10);
 });
 
-test('Pildong-ro 26 is the fixed location and ranks Chungmuro Station first', () => {
+test('the CJ training center store appears first at the fixed Pildong address', () => {
+  const nearest = selectNearestStores(STORES, FIXED_LOCATION, 1);
+
+  assert.deepEqual(nearest, [{
+    id: 'cj-training-center',
+    name: '올리브영 CJ인재원점',
+    addr: '서울특별시 중구 필동로 26 (필동2가 101-1)',
+    lat: 37.559175,
+    lng: 126.995635,
+    stock: 2,
+  }]);
+});
+
+test('Pildong-ro 26 is the fixed location and ranks the CJ training center first', () => {
   assert.deepEqual(FIXED_LOCATION, {
     address: '서울시 중구 필동로 26 (필동2가 101-1)',
-    lat: 37.5605,
-    lng: 126.9948,
+    lat: 37.559175,
+    lng: 126.995635,
   });
 
   const nearest = selectNearestStores(STORES, FIXED_LOCATION, 2);
-  assert.deepEqual(nearest.map((store) => store.id), ['chungmuro', 'daero']);
+  assert.deepEqual(nearest.map((store) => store.id), ['cj-training-center', 'chungmuro']);
 
   const nearestDistance = distanceKm(FIXED_LOCATION, nearest[0]);
-  assert.equal(formatDistance(nearestDistance), '0.2km');
-  assert.equal(walkingMinutes(nearestDistance), 3);
+  assert.equal(formatDistance(nearestDistance), '0.0km');
+  assert.equal(walkingMinutes(nearestDistance), 1);
+});
+
+test('the CJ training center marker has minimal placeholder news until details are defined', () => {
+  const store = STORES.find((item) => item.id === 'cj-training-center');
+  const news = getStoreNewsForStore(store);
+
+  assert.equal(news.notices.length, 1);
+  assert.equal(news.crewTalks.length, 1);
 });
 
 test('a marker stock number produces unique rows without exceeding the catalog', () => {
@@ -931,8 +963,8 @@ test('the Kakao camera pans the selected marker above the sheet', () => {
 });
 
 test('the initial map viewport can fit all ten nearby stores', () => {
-  const nearest = selectNearestStores(STORES, { lat: 37.5605, lng: 126.9948 }, 10);
-  assert.deepEqual(getStoreBounds(nearest), [[126.977, 37.5606047], [127.0074, 37.5658]]);
+  const nearest = selectNearestStores(STORES, FIXED_LOCATION, 10);
+  assert.deepEqual(getStoreBounds(nearest), [[126.9829236, 37.559175], [127.0074, 37.5651]]);
 });
 
 test('the initial Kakao map view never opens wider than level five', () => {

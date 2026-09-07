@@ -87,10 +87,15 @@ export function KakaoStorePreviewMap({ store }) {
   );
 }
 
+export function selectHomePreviewStore(stores) {
+  return stores.find((store) => store.id === 'cj-training-center')
+    ?? selectNearestStores(stores, FIXED_LOCATION, 1)[0];
+}
+
 export function StoreHome({ onNav, onOpenProduct }) {
   const [expandedTalkIds, setExpandedTalkIds] = useState([]);
   const nearbyStores = selectNearestStores(STORES, FIXED_LOCATION, 2);
-  const nearestStore = nearbyStores[0];
+  const nearestStore = selectHomePreviewStore(STORES);
   const nearestDistance = distanceKm(FIXED_LOCATION, nearestStore);
   const recommendations = [
     { label: '10일 전 장바구니에 담았어요', product: PRODUCTS[0] },
