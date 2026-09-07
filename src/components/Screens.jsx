@@ -156,7 +156,7 @@ export function StoreDetail({
             <h2>{store.name}</h2>
             <div className="acts"><img src="/icons/detail-star.svg" alt="" /><img src="/icons/detail-dots.svg" alt="" /></div>
           </div>
-          <div className="en">OLIVE YOUNG MYEONGDONG GLOBAL</div>
+          <div className="en">{store.englishName ?? store.addr}</div>
         </div>
         <div className="store-actions"><button className="btn-outline">매장 상품 보기</button><button className="btn-outline">매장 소식</button></div>
         <div className="store-tabs"><span>기본 정보</span><span>매장행사</span><span>인기 상품</span><span className="active">클리어런스</span></div>

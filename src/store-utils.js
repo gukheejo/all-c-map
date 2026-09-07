@@ -69,3 +69,14 @@ export function resolveSheetSnap(currentState, deltaY, velocityY) {
   if (deltaY >= distanceThreshold || velocityY >= velocityThreshold) return 'collapsed';
   return currentState;
 }
+
+export function filterCrewTalkItems(items, query) {
+  const normalizedQuery = query.trim().toLocaleLowerCase('ko-KR');
+  if (!normalizedQuery) return items;
+
+  return items.filter(({ product, store }) => (
+    `${product.name} ${product.variant} ${store.name}`
+      .toLocaleLowerCase('ko-KR')
+      .includes(normalizedQuery)
+  ));
+}

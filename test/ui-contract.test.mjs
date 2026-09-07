@@ -19,6 +19,8 @@ const { default: App } = await vite.ssrLoadModule('/src/App.jsx');
 const { default: BottomNav } = await vite.ssrLoadModule('/src/components/BottomNav.jsx');
 const mapModule = await vite.ssrLoadModule('/src/components/MapScreen.jsx');
 const {
+  CrewTalkFilters,
+  CrewTalkSheet,
   default: MapScreen,
   StoreSheet,
   getSelectedCameraOptions,
@@ -27,12 +29,13 @@ const {
 } = mapModule;
 const { Cart, StoreDetail, StoreHome } = await vite.ssrLoadModule('/src/components/Screens.jsx');
 const { BarcodeCard, PickupSheet } = await vite.ssrLoadModule('/src/components/Overlays.jsx');
-const { STORES, PRODUCTS } = await vite.ssrLoadModule('/src/data.js');
+const { CREW_TALKS, STORES, PRODUCTS } = await vite.ssrLoadModule('/src/data.js');
 const {
   FIXED_LOCATION,
   buildStoreProducts,
   distanceKm,
   formatDistance,
+  filterCrewTalkItems,
   resolveSheetSnap,
   selectNearestStores,
   toggleExpandedId,
@@ -105,6 +108,57 @@ test('a Crew Talk item toggles independently between collapsed and expanded', ()
   assert.deepEqual(toggleExpandedId([], 'p1'), ['p1']);
   assert.deepEqual(toggleExpandedId(['p1', 'p3'], 'p1'), ['p3']);
   assert.deepEqual(toggleExpandedId(['p1'], 'p3'), ['p1', 'p3']);
+});
+
+test('the map Crew Talk shortcut exposes its pressed state', () => {
+  assert.equal(typeof CrewTalkFilters, 'function');
+
+  const inactiveHtml = renderToStaticMarkup(
+    React.createElement(CrewTalkFilters, { crewTalkOpen: false, onCrewTalkToggle() {} }),
+  );
+  const activeHtml = renderToStaticMarkup(
+    React.createElement(CrewTalkFilters, { crewTalkOpen: true, onCrewTalkToggle() {} }),
+  );
+
+  assert.match(inactiveHtml, /aria-pressed="false"/);
+  assert.match(activeHtml, /aria-pressed="true"/);
+  assert.match(activeHtml, /class="crew-talk-filter active"/);
+});
+
+test('the Crew Talk sheet renders the searchable Figma 3-e feed', () => {
+  assert.equal(typeof CrewTalkSheet, 'function');
+
+  const html = renderToStaticMarkup(
+    React.createElement(CrewTalkSheet, {
+      items: CREW_TALKS,
+      query: '',
+      expandedTalkIds: [],
+      onQueryChange() {},
+      onToggleTalk() {},
+      onClose() {},
+    }),
+  );
+
+  assert.match(html, /class="sheet show expanded crew-talk-sheet"/);
+  assert.match(html, />크루톡</);
+  assert.match(html, /placeholder="궁금한 상품명을 검색해보세요"/);
+  assert.match(html, />최신순</);
+  assert.equal((html.match(/class="crew-talk-feed-item"/g) ?? []).length, 5);
+  assert.equal((html.match(/aria-expanded="false"/g) ?? []).length, 5);
+});
+
+test('Crew Talk search matches product and store names', () => {
+  assert.equal(typeof filterCrewTalkItems, 'function');
+
+  assert.deepEqual(
+    filterCrewTalkItems(CREW_TALKS, '브링그린').map((item) => item.id),
+    ['talk-p3'],
+  );
+  assert.deepEqual(
+    filterCrewTalkItems(CREW_TALKS, '명동거리점').map((item) => item.id),
+    ['talk-p4'],
+  );
+  assert.equal(filterCrewTalkItems(CREW_TALKS, '없는 상품').length, 0);
 });
 
 test('the map uses a live map surface and the exact Figma dim layer', () => {
