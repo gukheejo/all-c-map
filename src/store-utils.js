@@ -1,7 +1,7 @@
 export const FIXED_LOCATION = Object.freeze({
   address: '서울시 중구 필동로 26 (필동2가 101-1)',
-  lat: 37.5605,
-  lng: 126.9948,
+  lat: 37.559175,
+  lng: 126.995635,
 });
 
 const EARTH_RADIUS_KM = 6371;
