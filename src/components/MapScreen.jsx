@@ -6,9 +6,11 @@ import {
   filterCrewTalkItems,
   resolveSheetSnap,
   selectNearestStores,
+  sortDatedItems,
   toggleExpandedId,
 } from '../store-utils.js';
 import BottomNav from './BottomNav.jsx';
+import ExpandableCrewTalk from './ExpandableCrewTalk.jsx';
 import { loadKakaoMaps } from '../kakao-map.js';
 
 export { selectNearestStores } from '../store-utils.js';
@@ -41,6 +43,13 @@ export function limitInitialZoomLevel(fittedLevel, closestAllowedLevel = 5) {
   return Math.min(fittedLevel, closestAllowedLevel);
 }
 
+export function getSheetDragBounds(stageHeight, exactHalf = false) {
+  return {
+    minHeight: exactHalf ? stageHeight * 0.5 : Math.min(400, Math.max(300, stageHeight * 0.5)),
+    maxHeight: Math.max(300, stageHeight - 57),
+  };
+}
+
 function makePinElement(store, selected, onClick) {
   const marker = document.createElement('button');
   marker.type = 'button';
@@ -63,8 +72,9 @@ function makePinElement(store, selected, onClick) {
   return marker;
 }
 
-export function StoreSheet({ store, sheetState, onToggle, onOpenProduct, onOpenStore, sheetRef }) {
-  const storeProducts = buildStoreProducts(PRODUCTS, store.stock);
+function useSheetGesture(sheetRef, sheetState, onToggle, exactHalf = false) {
+  const internalSheetRef = useRef(null);
+  const activeSheetRef = sheetRef ?? internalSheetRef;
   const dragRef = useRef(null);
   const mouseCleanupRef = useRef(() => {});
   const [dragHeight, setDragHeight] = useState(null);
@@ -77,15 +87,15 @@ export function StoreSheet({ store, sheetState, onToggle, onOpenProduct, onOpenS
   }
 
   function beginDrag(clientY) {
-    const sheet = sheetRef?.current;
+    const sheet = activeSheetRef.current;
     if (!sheet) return;
     const stageHeight = sheet.parentElement?.clientHeight ?? window.innerHeight;
+    const bounds = getSheetDragBounds(stageHeight, exactHalf);
     dragRef.current = {
       startY: clientY,
       startTime: performance.now(),
       startHeight: sheet.getBoundingClientRect().height,
-      minHeight: Math.min(400, Math.max(300, stageHeight * 0.5)),
-      maxHeight: Math.max(300, stageHeight - 57),
+      ...bounds,
     };
     setDragging(true);
   }
@@ -144,28 +154,49 @@ export function StoreSheet({ store, sheetState, onToggle, onOpenProduct, onOpenS
     if (touch) finishDrag(touch.clientY);
   }
 
+  function handleTouchCancel() {
+    dragRef.current = null;
+    setDragging(false);
+    setDragHeight(null);
+  }
+
+  return {
+    activeSheetRef,
+    dragHeight,
+    dragging,
+    handleProps: {
+      'data-sheet-drag-region': 'true',
+      onKeyDown(event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          toggleSheet();
+        }
+      },
+      onMouseDown: handleMouseDown,
+      onTouchStart: handleTouchStart,
+      onTouchMove: handleTouchMove,
+      onTouchEnd: handleTouchEnd,
+      onTouchCancel: handleTouchCancel,
+    },
+  };
+}
+
+export function StoreSheet({ store, sheetState, onToggle, onOpenProduct, onOpenStore, sheetRef }) {
+  const storeProducts = buildStoreProducts(PRODUCTS, store.stock);
+  const gesture = useSheetGesture(sheetRef, sheetState, onToggle);
+
   return (
     <div
-      className={'sheet show ' + sheetState + (dragging ? ' dragging' : '')}
-      ref={sheetRef}
-      style={dragHeight == null ? undefined : { height: `${dragHeight}px` }}
+      className={'sheet show ' + sheetState + (gesture.dragging ? ' dragging' : '')}
+      ref={gesture.activeSheetRef}
+      style={gesture.dragHeight == null ? undefined : { height: `${gesture.dragHeight}px` }}
     >
       <div className="sheet-head">
         <button
           type="button"
           className="sheet-toggle"
-          data-sheet-drag-region="true"
           aria-label={sheetState === 'collapsed' ? '매장 상품 목록 펼치기' : '매장 상품 목록 접기'}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault();
-              toggleSheet();
-            }
-          }}
-          onMouseDown={handleMouseDown}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
+          {...gesture.handleProps}
         >
           <span className="sheet-handle" />
         </button>
@@ -206,7 +237,12 @@ export function StoreSheet({ store, sheetState, onToggle, onOpenProduct, onOpenS
                 </div>
               </div>
             </div>
-            {product.talk && <div className="talk"><b>크루TALK</b><span>{product.talk}</span></div>}
+            {product.talk && (
+              <ExpandableCrewTalk
+                className="talk"
+                message={product.talk}
+              />
+            )}
           </div>
         ))}
       </div>
@@ -230,13 +266,40 @@ export function CrewTalkFilters({ crewTalkOpen, onCrewTalkToggle }) {
   );
 }
 
-export function CrewTalkSheet({ items, query, expandedTalkIds, onQueryChange, onToggleTalk, onClose }) {
+export function CrewTalkSheet({
+  items,
+  query,
+  sheetState = 'collapsed',
+  sortOrder = 'latest',
+  expandedTalkIds,
+  onQueryChange,
+  onSheetStateChange,
+  onSortOrderChange,
+  onToggleTalk,
+  onClose,
+}) {
+  const sheetRef = useRef(null);
+  const gesture = useSheetGesture(sheetRef, sheetState, onSheetStateChange, true);
+
   return (
-    <div className="sheet show expanded crew-talk-sheet">
-      <button type="button" className="sheet-head" onClick={onClose} aria-label="크루톡 바텀시트 닫기">
-        <span className="sheet-handle" />
-        <span className="store-title">크루톡<img src="/icons/map-link.svg" alt="" /></span>
-      </button>
+    <div
+      className={`sheet show ${sheetState} crew-talk-sheet${gesture.dragging ? ' dragging' : ''}`}
+      ref={gesture.activeSheetRef}
+      style={gesture.dragHeight == null ? undefined : { height: `${gesture.dragHeight}px` }}
+    >
+      <div className="sheet-head">
+        <button
+          type="button"
+          className="sheet-toggle"
+          aria-label={sheetState === 'collapsed' ? '크루톡 목록 펼치기' : '크루톡 목록 접기'}
+          {...gesture.handleProps}
+        >
+          <span className="sheet-handle" />
+        </button>
+        <button type="button" className="store-title" onClick={onClose} aria-label="크루톡 바텀시트 닫기">
+          크루톡<img src="/icons/map-link.svg" alt="" />
+        </button>
+      </div>
       <div className="crew-talk-search-row">
         <label className="crew-talk-search">
           <span className="sr-only">크루톡 상품 검색</span>
@@ -248,7 +311,17 @@ export function CrewTalkSheet({ items, query, expandedTalkIds, onQueryChange, on
           />
           <img src="/icons/store-search.svg" alt="" />
         </label>
-        <span className="crew-talk-sort">최신순<img src="/icons/map-link.svg" alt="" /></span>
+        <label className="crew-talk-sort">
+          <select
+            aria-label="크루톡 정렬"
+            value={sortOrder}
+            onChange={(event) => onSortOrderChange(event.target.value)}
+          >
+            <option value="latest">최신순</option>
+            <option value="registered">등록순</option>
+          </select>
+          <img src="/icons/map-link.svg" alt="" />
+        </label>
       </div>
       <div className="crew-talk-feed">
         {items.map((item) => {
@@ -263,15 +336,13 @@ export function CrewTalkSheet({ items, query, expandedTalkIds, onQueryChange, on
                 </div>
                 <time>{item.date}</time>
               </div>
-              <button
-                type="button"
-                className={`crew-talk-message${expanded ? ' expanded' : ''}`}
-                aria-expanded={expanded}
-                onClick={() => onToggleTalk(item.id)}
-              >
-                <b>{item.store.name}</b>
-                <span>{item.message}</span>
-              </button>
+              <ExpandableCrewTalk
+                className="crew-talk-message"
+                label={item.store.name}
+                message={item.message}
+                expanded={expanded}
+                onToggle={() => onToggleTalk(item.id)}
+              />
             </article>
           );
         })}
@@ -294,6 +365,8 @@ export default function MapScreen({ onNav, onOpenProduct, onOpenStore, initialSe
   const [selectedId, setSelectedId] = useState(initialSelectedStoreId);
   const [sheetState, setSheetState] = useState(initialSelectedStoreId ? 'collapsed' : 'closed');
   const [crewTalkOpen, setCrewTalkOpen] = useState(false);
+  const [crewTalkSheetState, setCrewTalkSheetState] = useState('collapsed');
+  const [crewTalkSortOrder, setCrewTalkSortOrder] = useState('latest');
   const [crewTalkQuery, setCrewTalkQuery] = useState('');
   const [expandedTalkIds, setExpandedTalkIds] = useState([]);
   const [mapReady, setMapReady] = useState(false);
@@ -438,11 +511,15 @@ export default function MapScreen({ onNav, onOpenProduct, onOpenStore, initialSe
     if (!crewTalkOpen) {
       setSelectedId(null);
       setSheetState('closed');
+      setCrewTalkSheetState('collapsed');
     }
     setCrewTalkOpen(!crewTalkOpen);
   }
 
-  const visibleCrewTalks = filterCrewTalkItems(CREW_TALKS, crewTalkQuery);
+  const visibleCrewTalks = sortDatedItems(
+    filterCrewTalkItems(CREW_TALKS, crewTalkQuery),
+    crewTalkSortOrder,
+  );
 
   return (
     <section className="screen active" id="screen-3b">
@@ -489,8 +566,12 @@ export default function MapScreen({ onNav, onOpenProduct, onOpenStore, initialSe
           <CrewTalkSheet
             items={visibleCrewTalks}
             query={crewTalkQuery}
+            sheetState={crewTalkSheetState}
+            sortOrder={crewTalkSortOrder}
             expandedTalkIds={expandedTalkIds}
             onQueryChange={setCrewTalkQuery}
+            onSheetStateChange={setCrewTalkSheetState}
+            onSortOrderChange={setCrewTalkSortOrder}
             onToggleTalk={(id) => setExpandedTalkIds((current) => toggleExpandedId(current, id))}
             onClose={() => setCrewTalkOpen(false)}
           />

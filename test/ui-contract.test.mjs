@@ -23,12 +23,14 @@ const {
   CrewTalkSheet,
   default: MapScreen,
   StoreSheet,
+  getSheetDragBounds,
   getKakaoSelectedPanOffset,
   getSelectedMarkerOffset,
   getStoreBounds,
   limitInitialZoomLevel,
   loadKakaoMaps,
 } = mapModule;
+const { default: ExpandableCrewTalk } = await vite.ssrLoadModule('/src/components/ExpandableCrewTalk.jsx');
 const {
   Cart,
   KakaoStorePreviewMap,
@@ -40,15 +42,18 @@ const {
   updateStoreNewsQueries,
 } = await vite.ssrLoadModule('/src/components/Screens.jsx');
 const { BarcodeCard, PickupSheet } = await vite.ssrLoadModule('/src/components/Overlays.jsx');
-const { CREW_TALKS, STORES, PRODUCTS, STORE_NEWS_TALKS } = await vite.ssrLoadModule('/src/data.js');
+const { CREW_TALKS, STORES, PRODUCTS, STORE_NEWS_TALKS, STORE_NOTICES } = await vite.ssrLoadModule('/src/data.js');
 const {
   FIXED_LOCATION,
   buildStoreProducts,
   distanceKm,
+  filterStoreCrewTalks,
+  filterStoreNotices,
   formatDistance,
   filterCrewTalkItems,
   resolveSheetSnap,
   selectNearestStores,
+  sortDatedItems,
   toggleExpandedId,
   walkingMinutes,
 } = await vite.ssrLoadModule('/src/store-utils.js');
@@ -164,22 +169,30 @@ test('the Crew Talk sheet renders the searchable Figma 3-e feed', () => {
     React.createElement(CrewTalkSheet, {
       items: CREW_TALKS,
       query: '',
+      sheetState: 'collapsed',
+      sortOrder: 'latest',
       expandedTalkIds: [],
       onQueryChange() {},
+      onSheetStateChange() {},
+      onSortOrderChange() {},
       onToggleTalk() {},
       onClose() {},
     }),
   );
 
-  assert.match(html, /class="sheet show expanded crew-talk-sheet"/);
+  assert.match(html, /class="sheet show collapsed crew-talk-sheet"/);
+  assert.match(html, /data-sheet-drag-region="true"/);
+  assert.match(html, /aria-label="크루톡 목록 펼치기"/);
   assert.match(html, />크루톡</);
   assert.match(html, /placeholder="궁금한 상품명을 검색해보세요"/);
-  assert.match(html, />최신순</);
+  assert.match(html, /aria-label="크루톡 정렬"/);
+  assert.match(html, /value="latest" selected="">최신순/);
+  assert.match(html, /value="registered">등록순/);
   assert.equal((html.match(/class="crew-talk-feed-item"/g) ?? []).length, 5);
   assert.equal((html.match(/aria-expanded="false"/g) ?? []).length, 5);
 });
 
-test('Crew Talk search matches product and store names', () => {
+test('Crew Talk search matches product, store, variant, and message keywords', () => {
   assert.equal(typeof filterCrewTalkItems, 'function');
 
   assert.deepEqual(
@@ -190,7 +203,36 @@ test('Crew Talk search matches product and store names', () => {
     filterCrewTalkItems(CREW_TALKS, '명동거리점').map((item) => item.id),
     ['talk-p4'],
   );
+  assert.deepEqual(
+    filterCrewTalkItems(CREW_TALKS, '가을 메이크업').map((item) => item.id),
+    ['talk-p2'],
+  );
   assert.equal(filterCrewTalkItems(CREW_TALKS, '없는 상품').length, 0);
+});
+
+test('dated feeds switch between newest-first and oldest-first registration order', () => {
+  const fixture = [
+    { id: 'middle', date: '2026.08.12' },
+    { id: 'newest', date: '2026.08.19' },
+    { id: 'oldest', date: '2026.08.01' },
+  ];
+
+  assert.deepEqual(sortDatedItems(fixture, 'latest').map((item) => item.id), ['newest', 'middle', 'oldest']);
+  assert.deepEqual(sortDatedItems(fixture, 'registered').map((item) => item.id), ['oldest', 'middle', 'newest']);
+  assert.deepEqual(fixture.map((item) => item.id), ['middle', 'newest', 'oldest']);
+});
+
+test('store-news search supports multiple keywords across notice and Crew Talk content', () => {
+  const store = STORES.find((item) => item.id === 'chungmuro');
+
+  assert.deepEqual(
+    filterStoreNotices(STORE_NOTICES, store, '입고 온라인').map((item) => item.id),
+    ['notice-1', 'notice-4'],
+  );
+  assert.deepEqual(
+    filterStoreCrewTalks(STORE_NEWS_TALKS, store, '브링그린 민감성').map((item) => item.id),
+    ['store-talk-p3'],
+  );
 });
 
 test('the map uses a live map surface and the exact Figma dim layer', () => {
@@ -320,6 +362,23 @@ test('sheet release snaps on distance or flick velocity', () => {
   assert.equal(resolveSheetSnap('collapsed', -8, -0.1), 'collapsed');
 });
 
+test('Crew Talk drag bounds use exact half and full available map height', () => {
+  assert.deepEqual(getSheetDragBounds(900, true), { minHeight: 450, maxHeight: 843 });
+  assert.deepEqual(getSheetDragBounds(792, true), { minHeight: 396, maxHeight: 735 });
+});
+
+test('expandable Crew Talk keeps its message in the accessible name', () => {
+  const html = renderToStaticMarkup(React.createElement(ExpandableCrewTalk, {
+    label: '올리브영 충무로역점',
+    message: '입고된 상품을 확인해보세요.',
+    expanded: false,
+  }));
+
+  assert.doesNotMatch(html, /aria-label=/);
+  assert.match(html, /입고된 상품을 확인해보세요\./);
+  assert.match(html, /class="sr-only">전체 내용 보기/);
+});
+
 test('the selected store sheet renders one row per marker stock number', () => {
   const selectedStore = STORES.find((store) => store.id === 'chungmuro');
   const html = renderToStaticMarkup(
@@ -359,8 +418,8 @@ test('the map sheet separates store navigation from its drag region', async () =
   assert.doesNotMatch(html, /class="sheet-head"[^>]*role="button"/);
   assert.match(source, /onOpenStore\(store\)/);
   assert.match(source, /initialSelectedStoreId/);
-  assert.match(source, /onMouseDown=/);
-  assert.match(source, /onTouchStart=/);
+  assert.match(source, /onMouseDown:/);
+  assert.match(source, /onTouchStart:/);
   assert.match(styles, /\.sheet-toggle\{[^}]*height:28px/);
 });
 
@@ -426,6 +485,10 @@ test('store news renders the selected store notice feed from Figma 3.5-a', () =>
   assert.match(html, /id="screen-3-5-a"/);
   assert.match(html, /aria-selected="true"[^>]*>공지\(5\)/);
   assert.match(html, /placeholder="궁금한 소식을 검색해보세요"/);
+  assert.match(html, /class="store-news-search"/);
+  assert.match(html, /aria-label="공지 정렬"/);
+  assert.match(html, /value="latest" selected="">최신순/);
+  assert.match(html, /value="registered">등록순/);
   assert.match(html, /role="tabpanel"[^>]*aria-labelledby="store-news-notice-tab"/);
   assert.equal((html.match(/class="store-notice-item/g) ?? []).length, 5);
   assert.match(html, /올리브영 충무로역점/);
@@ -469,11 +532,43 @@ test('store news switches to the Figma 3.5-b Crew Talk feed', () => {
   assert.match(html, /id="screen-3-5-b"/);
   assert.match(html, /aria-selected="true"[^>]*>크루톡\(11\)/);
   assert.match(html, /placeholder="궁금한 상품명을 검색해보세요"/);
+  assert.match(html, /aria-label="크루톡 정렬"/);
   assert.match(html, /role="tabpanel"[^>]*aria-labelledby="store-news-crew-tab"/);
   assert.equal(STORE_NEWS_TALKS.length, 11);
   assert.equal((html.match(/class="store-news-talk-item/g) ?? []).length, 11);
-  assert.equal((html.match(/올리브영 충무로역점/g) ?? []).length, 11);
+  assert.equal((html.match(/<b>올리브영 충무로역점<\/b>/g) ?? []).length, 11);
+  assert.equal((html.match(/aria-expanded="false"/g) ?? []).length, 11);
   assert.doesNotMatch(html, /명동거리점|올리브영 명동대로점|올리브영 명동역점/);
+});
+
+test('every product Crew Talk surface starts ellipsized and can expose expansion state', () => {
+  const store = STORES.find((item) => item.id === 'chungmuro');
+  const products = buildStoreProducts(PRODUCTS, store.stock);
+  const detailHtml = renderToStaticMarkup(React.createElement(StoreDetail, {
+    store,
+    products,
+    onNav() {},
+    onOrder() {},
+    toastShown: false,
+  }));
+  const sheetHtml = renderToStaticMarkup(React.createElement(StoreSheet, {
+    store,
+    sheetState: 'collapsed',
+    onToggle() {},
+    onOpenProduct() {},
+    onOpenStore() {},
+  }));
+
+  assert.ok((detailHtml.match(/class="expandable-crewtalk(?: |")/g) ?? []).length > 0);
+  assert.ok((sheetHtml.match(/class="expandable-crewtalk(?: |")/g) ?? []).length > 0);
+  assert.equal(
+    (detailHtml.match(/class="expandable-crewtalk(?: |")/g) ?? []).length,
+    (detailHtml.match(/aria-expanded="false"/g) ?? []).length,
+  );
+  assert.equal(
+    (sheetHtml.match(/class="expandable-crewtalk(?: |")/g) ?? []).length,
+    (sheetHtml.match(/aria-expanded="false"/g) ?? []).length,
+  );
 });
 
 test('notice and Crew Talk searches keep independent query values', () => {

@@ -5,11 +5,15 @@ import { PRODUCTS, STORES, STORE_NEWS_TALKS, STORE_NOTICES, won, MAIN_STORE } fr
 import {
   FIXED_LOCATION,
   distanceKm,
+  filterStoreCrewTalks,
+  filterStoreNotices,
   formatDistance,
   selectNearestStores,
+  sortDatedItems,
   toggleExpandedId,
   walkingMinutes,
 } from '../store-utils.js';
+import ExpandableCrewTalk from './ExpandableCrewTalk.jsx';
 
 export function getStorePreviewCenter(store) {
   return { lat: store.lat, lng: store.lng };
@@ -133,15 +137,12 @@ export function StoreHome({ onNav }) {
                     <div className="name">{product.name}</div>
                     <div className="reco-meta"><span className="sub">{product.variant}</span><span className="stock">잔여 재고 {product.stock}개</span></div>
                     {product.talk && (
-                      <button
-                        type="button"
-                        className={`crewtalk${expandedTalkIds.includes(product.id) ? ' expanded' : ''}`}
-                        aria-expanded={expandedTalkIds.includes(product.id)}
-                        aria-label={`크루TALK ${expandedTalkIds.includes(product.id) ? '접기' : '전체 내용 보기'}`}
-                        onClick={() => setExpandedTalkIds((current) => toggleExpandedId(current, product.id))}
-                      >
-                        <b>크루TALK</b><span className="crewtalk-copy">{product.talk}</span>
-                      </button>
+                      <ExpandableCrewTalk
+                        className="crewtalk"
+                        message={product.talk}
+                        expanded={expandedTalkIds.includes(product.id)}
+                        onToggle={() => setExpandedTalkIds((current) => toggleExpandedId(current, product.id))}
+                      />
                     )}
                   </div>
                 </div>
@@ -247,7 +248,12 @@ export function StoreDetail({
                   </div>
                 </div>
               </div>
-              {p.talk && <div className="talk"><b>크루TALK</b><span>{p.talk}</span></div>}
+              {p.talk && (
+                <ExpandableCrewTalk
+                  className="talk"
+                  message={p.talk}
+                />
+              )}
             </div>
           ))}
         </div>
@@ -315,14 +321,17 @@ export function updateStoreNewsQueries(queries, tab, value) {
 
 export function StoreNews({ store = MAIN_STORE, tab = 'notice', onBack, onTabChange, onNav = () => {} }) {
   const [queries, setQueries] = useState({ notice: '', crew: '' });
+  const [sortOrders, setSortOrders] = useState({ notice: 'latest', crew: 'latest' });
   const isNotice = tab === 'notice';
   const query = queries[tab];
-  const normalizedQuery = query.trim().toLocaleLowerCase('ko-KR');
-  const notices = STORE_NOTICES.filter((notice) =>
-    !normalizedQuery || `${store.name} ${notice.message}`.toLocaleLowerCase('ko-KR').includes(normalizedQuery)
+  const sortOrder = sortOrders[tab];
+  const notices = sortDatedItems(
+    filterStoreNotices(STORE_NOTICES, store, query),
+    sortOrder,
   );
-  const crewTalks = STORE_NEWS_TALKS.filter(({ product, message }) =>
-    !normalizedQuery || `${product.name} ${product.variant} ${store.name} ${message}`.toLocaleLowerCase('ko-KR').includes(normalizedQuery)
+  const crewTalks = sortDatedItems(
+    filterStoreCrewTalks(STORE_NEWS_TALKS, store, query),
+    sortOrder,
   );
 
   return (
@@ -338,7 +347,7 @@ export function StoreNews({ store = MAIN_STORE, tab = 'notice', onBack, onTabCha
         <StoreNewsTabs tab={tab} onTabChange={onTabChange} />
 
         <div className="store-news-searchbar">
-          <label>
+          <label className="store-news-search">
             <span className="sr-only">{isNotice ? '매장 소식 검색' : '크루톡 상품 검색'}</span>
             <input
               type="search"
@@ -348,7 +357,17 @@ export function StoreNews({ store = MAIN_STORE, tab = 'notice', onBack, onTabCha
             />
             <img src="/icons/store-search.svg" alt="" />
           </label>
-          <span className="store-news-sort">최신순 <img src="/icons/store-arrow.svg" alt="" /></span>
+          <label className="store-news-sort">
+            <select
+              aria-label={`${isNotice ? '공지' : '크루톡'} 정렬`}
+              value={sortOrder}
+              onChange={(event) => setSortOrders((current) => ({ ...current, [tab]: event.target.value }))}
+            >
+              <option value="latest">최신순</option>
+              <option value="registered">등록순</option>
+            </select>
+            <img src="/icons/store-arrow.svg" alt="" />
+          </label>
         </div>
 
         {isNotice ? (
@@ -385,7 +404,11 @@ export function StoreNews({ store = MAIN_STORE, tab = 'notice', onBack, onTabCha
                     </div>
                     <time>{date}</time>
                   </div>
-                  <div className="store-news-talk-bubble"><b>{store.name}</b><p>{message}</p></div>
+                  <ExpandableCrewTalk
+                    className="store-news-talk-bubble"
+                    label={store.name}
+                    message={message}
+                  />
                 </div>
               </article>
             )) : <p className="store-news-empty">검색 결과가 없습니다.</p>}

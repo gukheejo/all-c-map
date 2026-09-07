@@ -70,13 +70,35 @@ export function resolveSheetSnap(currentState, deltaY, velocityY) {
   return currentState;
 }
 
-export function filterCrewTalkItems(items, query) {
-  const normalizedQuery = query.trim().toLocaleLowerCase('ko-KR');
-  if (!normalizedQuery) return items;
+function matchesSearchText(text, query) {
+  const terms = query
+    .trim()
+    .toLocaleLowerCase('ko-KR')
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!terms.length) return true;
 
-  return items.filter(({ product, store }) => (
-    `${product.name} ${product.variant} ${store.name}`
-      .toLocaleLowerCase('ko-KR')
-      .includes(normalizedQuery)
+  const haystack = text.toLocaleLowerCase('ko-KR');
+  return terms.every((term) => haystack.includes(term));
+}
+
+export function filterCrewTalkItems(items, query) {
+  return items.filter(({ product, store, message }) => (
+    matchesSearchText(`${product.name} ${product.variant} ${store.name} ${message}`, query)
   ));
+}
+
+export function filterStoreNotices(items, store, query) {
+  return items.filter((notice) => matchesSearchText(`${store.name} ${notice.message}`, query));
+}
+
+export function filterStoreCrewTalks(items, store, query) {
+  return items.filter(({ product, message }) => (
+    matchesSearchText(`${product.name} ${product.variant} ${store.name} ${message}`, query)
+  ));
+}
+
+export function sortDatedItems(items, order = 'latest') {
+  const direction = order === 'registered' ? 1 : -1;
+  return [...items].sort((a, b) => direction * a.date.localeCompare(b.date));
 }
