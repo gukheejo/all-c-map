@@ -42,8 +42,7 @@ export function buildStoreProducts(products, count, aiLimit = 3) {
   if (!products.length || count <= 0) return [];
 
   let aiPicks = 0;
-  return Array.from({ length: count }, (_, index) => {
-    const source = products[index % products.length];
+  return products.slice(0, count).map((source, index) => {
     const showAiPick = source.badge === 'AI PICK' && aiPicks < aiLimit;
     if (showAiPick) aiPicks += 1;
 

@@ -3,6 +3,7 @@ export function createPickupFlowState() {
     screen: '2',
     selectedStore: null,
     productId: null,
+    productReturnScreen: '3b',
     pickupDraft: null,
     cart: [],
     overlay: 'none',
@@ -13,10 +14,29 @@ export function pickupFlowReducer(state, action) {
   switch (action.type) {
     case 'NAVIGATE':
       return { ...state, screen: action.screen, overlay: 'none', pickupDraft: null };
+    case 'ENTER_MAP':
+      return {
+        ...state,
+        screen: '3b',
+        selectedStore: null,
+        productId: null,
+        productReturnScreen: '3b',
+        overlay: 'none',
+        pickupDraft: null,
+      };
     case 'OPEN_PRODUCT':
-      return { ...state, screen: 'product', productId: action.productId, overlay: 'none' };
+      return {
+        ...state,
+        screen: 'product',
+        productId: action.productId,
+        selectedStore: action.store ?? state.selectedStore,
+        productReturnScreen: action.returnScreen ?? state.screen,
+        overlay: 'none',
+      };
     case 'OPEN_STORE':
       return { ...state, screen: '4', selectedStore: action.store, overlay: 'none', pickupDraft: null };
+    case 'OPEN_STORE_NEWS':
+      return { ...state, screen: '3.5a', selectedStore: action.store, overlay: 'none', pickupDraft: null };
     case 'OPEN_PICKUP':
       return { ...state, pickupDraft: { product: action.product, qty: 1 }, overlay: 'pickup-sheet' };
     case 'CHANGE_PICKUP_QTY': {

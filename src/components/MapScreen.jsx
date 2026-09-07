@@ -43,6 +43,21 @@ export function limitInitialZoomLevel(fittedLevel, closestAllowedLevel = 5) {
   return Math.min(fittedLevel, closestAllowedLevel);
 }
 
+export function shouldShowMapDim() {
+  return true;
+}
+
+export function getDismissedMapUiState(current) {
+  return {
+    ...current,
+    selectedId: null,
+    sheetState: 'closed',
+    crewTalkOpen: false,
+    crewTalkSheetState: 'collapsed',
+    showSearchButton: current.crewTalkOpen ? true : current.showSearchButton,
+  };
+}
+
 export function getSheetDragBounds(stageHeight, exactHalf = false) {
   return {
     minHeight: exactHalf ? stageHeight * 0.5 : Math.min(400, Math.max(300, stageHeight * 0.5)),
@@ -181,7 +196,7 @@ function useSheetGesture(sheetRef, sheetState, onToggle, exactHalf = false) {
   };
 }
 
-export function StoreSheet({ store, sheetState, onToggle, onOpenProduct, onOpenStore, sheetRef }) {
+export function StoreSheet({ store, sheetState, onToggle, onOpenProduct, onOpenStore, onOpenNews, sheetRef }) {
   const storeProducts = buildStoreProducts(PRODUCTS, store.stock);
   const gesture = useSheetGesture(sheetRef, sheetState, onToggle);
 
@@ -210,22 +225,27 @@ export function StoreSheet({ store, sheetState, onToggle, onOpenProduct, onOpenS
         </button>
       </div>
       <div className="sheet-notice">
-        <div className="sheet-notice-card">
+        <button
+          type="button"
+          className="sheet-notice-card"
+          aria-label={`${store.name} 매장 공지 보기`}
+          onClick={() => onOpenNews(store)}
+        >
           <img className="notice-icon" src="/icons/notice-bell.svg" alt="" />
           <span className="notice-copy">[입고알림] 라스트픽 온라인 입고 완료되었습니다.</span>
           <span className="notice-time">12분 전</span>
           <img className="notice-link" src="/icons/map-link.svg" alt="" />
-        </div>
+        </button>
       </div>
       <div className="sheet-body">
         {storeProducts.map((product) => (
           <div className="crew-item" key={product.listKey}>
             <div className="row">
-              <button type="button" className="product-thumb" onClick={() => onOpenProduct(product.id)}>
+              <button type="button" className="product-thumb" onClick={() => onOpenProduct(product.id, store)}>
                 <img className="prod" src={product.img} alt="" />
               </button>
               <div className="info">
-                <button type="button" className="nm" onClick={() => onOpenProduct(product.id)}>{product.name}</button>
+                <button type="button" className="nm" onClick={() => onOpenProduct(product.id, store)}>{product.name}</button>
                 <div className="subrow">
                   <span className="variant">{product.variant}</span>
                   {product.badge && <span className="badge-ai">{product.badge}</span>}
@@ -250,10 +270,17 @@ export function StoreSheet({ store, sheetState, onToggle, onOpenProduct, onOpenS
   );
 }
 
-export function CrewTalkFilters({ crewTalkOpen, onCrewTalkToggle }) {
+export function CrewTalkFilters({ operatingActive, onOperatingToggle, crewTalkOpen, onCrewTalkToggle }) {
   return (
     <div className="map-filters">
-      <button type="button"><img src="/icons/map-clock.svg" alt="" />영업중</button>
+      <button
+        type="button"
+        className={`operating-filter${operatingActive ? ' active' : ''}`}
+        aria-pressed={operatingActive}
+        onClick={onOperatingToggle}
+      >
+        <img src="/icons/map-clock.svg" alt="" />영업중
+      </button>
       <button
         type="button"
         className={`crew-talk-filter${crewTalkOpen ? ' active' : ''}`}
@@ -320,7 +347,7 @@ export function CrewTalkSheet({
             <option value="latest">최신순</option>
             <option value="registered">등록순</option>
           </select>
-          <img src="/icons/map-link.svg" alt="" />
+          <img src="/icons/store-arrow.svg" alt="" />
         </label>
       </div>
       <div className="crew-talk-feed">
@@ -352,18 +379,19 @@ export function CrewTalkSheet({
   );
 }
 
-export default function MapScreen({ onNav, onOpenProduct, onOpenStore, initialSelectedStoreId = null }) {
+export default function MapScreen({ onNav, onOpenProduct, onOpenStore, onOpenNews, initialSelectedStoreId = null }) {
   const mapDivRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef([]);
   const sheetRef = useRef(null);
   const selectStoreRef = useRef(() => {});
-  const closeSelectedStoreRef = useRef(() => {});
+  const dismissMapUiRef = useRef(() => {});
   const [visibleStores, setVisibleStores] = useState(() => selectNearestStores(STORES, CENTER));
   const [showAiBanner, setShowAiBanner] = useState(true);
   const [showSearchButton, setShowSearchButton] = useState(true);
   const [selectedId, setSelectedId] = useState(initialSelectedStoreId);
   const [sheetState, setSheetState] = useState(initialSelectedStoreId ? 'collapsed' : 'closed');
+  const [operatingActive, setOperatingActive] = useState(false);
   const [crewTalkOpen, setCrewTalkOpen] = useState(false);
   const [crewTalkSheetState, setCrewTalkSheetState] = useState('collapsed');
   const [crewTalkSortOrder, setCrewTalkSortOrder] = useState('latest');
@@ -380,7 +408,7 @@ export default function MapScreen({ onNav, onOpenProduct, onOpenStore, initialSe
     let maps;
 
     const onMoveStart = () => setShowSearchButton(true);
-    const onMapClick = () => closeSelectedStoreRef.current();
+    const onMapClick = () => dismissMapUiRef.current();
 
     loadKakaoMaps(import.meta.env.VITE_KAKAO_MAP_KEY)
       .then((loadedMaps) => {
@@ -442,11 +470,21 @@ export default function MapScreen({ onNav, onOpenProduct, onOpenStore, initialSe
   }
   selectStoreRef.current = selectStore;
 
-  function closeSelectedStore() {
-    setSelectedId(null);
-    setSheetState('closed');
+  function dismissMapUi() {
+    const next = getDismissedMapUiState({
+      selectedId,
+      sheetState,
+      crewTalkOpen,
+      crewTalkSheetState,
+      showSearchButton,
+    });
+    setSelectedId(next.selectedId);
+    setSheetState(next.sheetState);
+    setCrewTalkOpen(next.crewTalkOpen);
+    setCrewTalkSheetState(next.crewTalkSheetState);
+    setShowSearchButton(next.showSearchButton);
   }
-  closeSelectedStoreRef.current = closeSelectedStore;
+  dismissMapUiRef.current = dismissMapUi;
 
   useEffect(() => {
     const map = mapRef.current;
@@ -508,12 +546,22 @@ export default function MapScreen({ onNav, onOpenProduct, onOpenStore, initialSe
   }
 
   function toggleCrewTalk() {
-    if (!crewTalkOpen) {
-      setSelectedId(null);
-      setSheetState('closed');
+    if (crewTalkOpen) {
+      setCrewTalkOpen(false);
       setCrewTalkSheetState('collapsed');
+      setShowSearchButton(true);
+      return;
     }
-    setCrewTalkOpen(!crewTalkOpen);
+    setSelectedId(null);
+    setSheetState('closed');
+    setCrewTalkSheetState('collapsed');
+    setCrewTalkOpen(true);
+  }
+
+  function closeCrewTalk() {
+    setCrewTalkOpen(false);
+    setCrewTalkSheetState('collapsed');
+    setShowSearchButton(true);
   }
 
   const visibleCrewTalks = sortDatedItems(
@@ -527,7 +575,7 @@ export default function MapScreen({ onNav, onOpenProduct, onOpenStore, initialSe
         <div className="map-canvas">
           <div id="kakao-map" ref={mapDivRef} aria-label="충무로 주변 올리브영 실제 지도" />
           {!mapReady && <div className="map-load-state" role="status">{mapError || '지도를 불러오는 중이에요.'}</div>}
-          {(showAiBanner || selectedStore || crewTalkOpen) && <img className="map-dim-art" src="/icons/map-dim-screen.svg" alt="" />}
+          {shouldShowMapDim() && <img className="map-dim-art" src="/icons/map-dim-screen.svg" alt="" />}
         </div>
 
         <div className="map-topbar">
@@ -537,7 +585,14 @@ export default function MapScreen({ onNav, onOpenProduct, onOpenStore, initialSe
           <h1>올클맵</h1>
         </div>
 
-        {!showAiBanner && <CrewTalkFilters crewTalkOpen={crewTalkOpen} onCrewTalkToggle={toggleCrewTalk} />}
+        {!showAiBanner && (
+          <CrewTalkFilters
+            operatingActive={operatingActive}
+            onOperatingToggle={() => setOperatingActive((active) => !active)}
+            crewTalkOpen={crewTalkOpen}
+            onCrewTalkToggle={toggleCrewTalk}
+          />
+        )}
 
         {showAiBanner && (
           <div className="ai-banner" role="status">
@@ -561,6 +616,7 @@ export default function MapScreen({ onNav, onOpenProduct, onOpenStore, initialSe
           onToggle={setSheetState}
           onOpenProduct={onOpenProduct}
           onOpenStore={onOpenStore}
+          onOpenNews={onOpenNews}
         />}
         {crewTalkOpen && (
           <CrewTalkSheet
@@ -573,7 +629,7 @@ export default function MapScreen({ onNav, onOpenProduct, onOpenStore, initialSe
             onSheetStateChange={setCrewTalkSheetState}
             onSortOrderChange={setCrewTalkSortOrder}
             onToggleTalk={(id) => setExpandedTalkIds((current) => toggleExpandedId(current, id))}
-            onClose={() => setCrewTalkOpen(false)}
+            onClose={closeCrewTalk}
           />
         )}
       </div>

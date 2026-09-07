@@ -15,7 +15,10 @@ export function PickupSheet({ store = MAIN_STORE, product, qty, onMinus, onPlus,
       <div className="store-line"><b>픽업 매장</b> <span>{store.name}</span></div>
       <div className="item">
         <div className="nm">{product.name}</div>
-        <div className="variant">{product.variant}</div>
+        <div className="pickup-variant-row">
+          <span className="variant">{product.variant}</span>
+          {product.badge2 && <span className="condition-badge">{product.badge2}</span>}
+        </div>
         <div className="stock">잔여재고 | {product.stock}개</div>
         <div className="qtyrow">
           <div className="qty-stepper">
