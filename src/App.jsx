@@ -54,9 +54,10 @@ export default function App() {
     : [];
   const cartStore = flow.cart[0]?.store ?? flow.selectedStore;
   const dimVisible = flow.overlay === 'pickup-sheet' || flow.overlay === 'barcode';
+  const layoutMode = flow.screen === '3b' ? 'viewport' : 'document';
 
   return (
-      <div id="stage">
+      <div id="stage" data-layout={layoutMode}>
         {flow.screen === '2' && (
           <StoreHome
             onNav={(id) => {

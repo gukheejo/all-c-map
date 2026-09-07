@@ -67,6 +67,40 @@ test('the app opens directly on the store screen', () => {
   assert.match(html, /id="screen-2"/);
 });
 
+test('content screens use document scrolling while the interactive map keeps viewport scrolling', () => {
+  const appHtml = renderToStaticMarkup(React.createElement(App));
+  const productHtml = renderToStaticMarkup(
+    React.createElement(ProductDetail, {
+      product: PRODUCTS[0],
+      store: STORES[1],
+      onBack() {},
+      onOrder() {},
+    }),
+  );
+  const mapHtml = renderToStaticMarkup(
+    React.createElement(MapScreen, { onNav() {}, onOpenProduct() {} }),
+  );
+
+  assert.match(appHtml, /id="stage"[^>]*data-layout="document"/);
+  assert.match(productHtml, /id="screen-product"[^>]*data-scroll-mode="document"/);
+  assert.match(mapHtml, /id="screen-3b"[^>]*data-scroll-mode="viewport"/);
+});
+
+test('product detail hides the global bottom navigation and keeps pickup actions', () => {
+  const html = renderToStaticMarkup(
+    React.createElement(ProductDetail, {
+      product: PRODUCTS[0],
+      store: STORES[1],
+      onBack() {},
+      onOrder() {},
+    }),
+  );
+
+  assert.doesNotMatch(html, /class="bottomnav"/);
+  assert.match(html, /class="product-detail-orderbar"/);
+  assert.match(html, />픽업주문<\/button>/);
+});
+
 test('entering All-C-Map from store home clears any stale store selection', () => {
   let state = createPickupFlowState();
   state = pickupFlowReducer(state, { type: 'OPEN_STORE', store: STORES[1] });

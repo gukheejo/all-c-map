@@ -98,7 +98,7 @@ export function StoreHome({ onNav, onOpenProduct }) {
   ];
 
   return (
-    <section className="screen active" id="screen-2">
+    <section className="screen active" id="screen-2" data-scroll-mode="document">
       <div className="screen-body">
         <header className="store-home-header">
           <h1>올영매장</h1>
@@ -205,7 +205,7 @@ export function StoreHome({ onNav, onOpenProduct }) {
 export function ProductDetail({ product, store = MAIN_STORE, onBack, onOrder, onNav = () => {} }) {
   if (!product) return null;
   return (
-    <section className="screen active" id="screen-product">
+    <section className="screen active" id="screen-product" data-scroll-mode="document">
       <div className="screen-body product-detail-body">
         <div className="topbar product-detail-topbar">
           <button type="button" className="back" onClick={onBack} aria-label="이전 화면으로 돌아가기">
@@ -249,7 +249,6 @@ export function ProductDetail({ product, store = MAIN_STORE, onBack, onOrder, on
         <button type="button" className="product-heart" aria-label="좋아요">♡</button>
         <button type="button" className="btn-black" onClick={() => onOrder(product)}>픽업주문</button>
       </div>
-      <BottomNav active="store" onNav={onNav} />
     </section>
   );
 }
@@ -268,7 +267,7 @@ export function StoreDetail({
   onGoCart,
 }) {
   return (
-    <section className="screen active" id="screen-4">
+    <section className="screen active" id="screen-4" data-scroll-mode="document">
       <div className="screen-body">
         <div className="topbar">
           <button className="back" onClick={() => onNav('3b')}><img src="/icons/detail-back.svg" alt="back" /></button>
@@ -396,7 +395,7 @@ export function StoreNews({ store = MAIN_STORE, tab = 'notice', onBack, onTabCha
   );
 
   return (
-    <section className="screen active store-news-screen" id={isNotice ? 'screen-3-5-a' : 'screen-3-5-b'}>
+    <section className="screen active store-news-screen" id={isNotice ? 'screen-3-5-a' : 'screen-3-5-b'} data-scroll-mode="document">
       <div className="screen-body">
         <div className="topbar store-news-topbar">
           <button type="button" className="back" onClick={onBack} aria-label="매장 상세로 돌아가기">
@@ -504,7 +503,7 @@ export function Cart({ onNav, cart, store = MAIN_STORE, onQtyChange, onPurchase 
   const origSum = cart.reduce((s, e) => s + e.product.orig * e.qty, 0);
   const totalSum = cart.reduce((s, e) => s + e.product.price * e.qty, 0);
   return (
-    <section className="screen active" id="screen-6">
+    <section className="screen active" id="screen-6" data-scroll-mode="document">
       <div className="screen-body">
         <div className="cart-topbar">
           <button className="back" onClick={() => onNav('4')}><img src="/icons/cart-back.svg" alt="back" /></button>
