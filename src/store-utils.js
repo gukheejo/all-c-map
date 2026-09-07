@@ -39,6 +39,14 @@ export function walkingMinutes(kilometers) {
 }
 
 const CONDITION_BADGES = [undefined, '유통기한', '패키지 파손'];
+const STORE_CREW_TALK_OPENERS = [
+  (label) => `${label}에서 직접 발색과 사용감을 비교해 본 크루의 팁이에요.`,
+  (label) => `${label} 고객들이 자주 물어보신 포인트를 크루가 정리했어요.`,
+  (label) => `${label} 크루가 데일리로 써 보고 남긴 솔직한 사용 팁이에요.`,
+  (label) => `${label}에서 이 제품을 찾는 분들께 크루가 꼭 알려드리는 팁이에요.`,
+  (label) => `${label} 크루들이 추천 조합을 테스트한 뒤 남긴 코멘트예요.`,
+  (label) => `${label}에서 픽업하실 때 함께 참고해 보세요. 크루가 직접 확인한 팁이에요.`,
+];
 
 function hashStoreId(storeId) {
   return [...String(storeId ?? '')].reduce(
@@ -63,9 +71,19 @@ function buildStoreConditions(count, storeId) {
   return conditions;
 }
 
-export function buildStoreProducts(products, count, aiLimit = 3, storeId) {
+function buildStoreCrewTalk(product, store, index) {
+  if (!product.talk || !store?.name) return product.talk;
+
+  const label = store.name.replace(/^올리브영\s*/, '');
+  const openerIndex = hashStoreId(`${store.id}:${product.id}:${index}`)
+    % STORE_CREW_TALK_OPENERS.length;
+  return `${STORE_CREW_TALK_OPENERS[openerIndex](label)} ${product.talk}`;
+}
+
+export function buildStoreProducts(products, count, aiLimit = 3, storeContext) {
   if (!products.length || count <= 0) return [];
 
+  const storeId = typeof storeContext === 'object' ? storeContext?.id : storeContext;
   let aiPicks = 0;
   const storeProducts = products.slice(0, count);
   const conditions = buildStoreConditions(storeProducts.length, storeId);
@@ -77,6 +95,7 @@ export function buildStoreProducts(products, count, aiLimit = 3, storeId) {
       ...source,
       badge: showAiPick ? source.badge : undefined,
       badge2: conditions[index],
+      talk: buildStoreCrewTalk(source, storeContext, index),
       listKey: `${source.id}-${index}`,
     };
   });
@@ -84,7 +103,7 @@ export function buildStoreProducts(products, count, aiLimit = 3, storeId) {
 
 export function buildStoreProductsForStore(products, store, aiLimit = 3) {
   if (!store) return [];
-  return buildStoreProducts(products, store.stock, store.ai ? aiLimit : 0, store.id);
+  return buildStoreProducts(products, store.stock, store.ai ? aiLimit : 0, store);
 }
 
 export function toggleExpandedId(expandedIds, id) {
