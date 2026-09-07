@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import BottomNav from './BottomNav.jsx';
-import { PRODUCTS, STORES, won, MAIN_STORE } from '../data.js';
+import { PRODUCTS, STORES, STORE_NEWS_TALKS, STORE_NOTICES, won, MAIN_STORE } from '../data.js';
 import {
   FIXED_LOCATION,
   distanceKm,
@@ -135,6 +135,7 @@ export function StoreDetail({
   products = PRODUCTS,
   onNav,
   onOrder,
+  onOpenNews,
   toastShown,
   onDismissToast,
   onGoCart,
@@ -158,7 +159,7 @@ export function StoreDetail({
           </div>
           <div className="en">{store.englishName ?? store.addr}</div>
         </div>
-        <div className="store-actions"><button className="btn-outline">매장 상품 보기</button><button className="btn-outline">매장 소식</button></div>
+        <div className="store-actions"><button className="btn-outline">매장 상품 보기</button><button className="btn-outline" onClick={() => onOpenNews?.(store)}>매장 소식</button></div>
         <div className="store-tabs"><span>기본 정보</span><span>매장행사</span><span>인기 상품</span><span className="active">클리어런스</span></div>
         <div id="store-products">
           {products.map((p) => (
@@ -191,6 +192,139 @@ export function StoreDetail({
           <button type="button" className="toast-close" aria-label="알림 닫기" onClick={onDismissToast}>×</button>
         </div>
       )}
+    </section>
+  );
+}
+
+export function StoreNewsTabs({ tab, onTabChange }) {
+  const isNotice = tab === 'notice';
+  function handleKeyDown(event) {
+    let nextTab = null;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') nextTab = isNotice ? 'crew' : 'notice';
+    if (event.key === 'End') nextTab = 'crew';
+    if (event.key === 'Home') nextTab = 'notice';
+    if (!nextTab) return;
+    event.preventDefault?.();
+    onTabChange(nextTab);
+    event.currentTarget?.parentElement?.querySelector(`#store-news-${nextTab}-tab`)?.focus();
+  }
+
+  return (
+    <div className="store-news-tabs" role="tablist" aria-label="매장 소식 유형">
+      <button
+        type="button"
+        id="store-news-notice-tab"
+        role="tab"
+        aria-selected={isNotice}
+        aria-controls="store-news-notice-panel"
+        tabIndex={isNotice ? 0 : -1}
+        className={isNotice ? 'active' : ''}
+        onClick={() => onTabChange('notice')}
+        onKeyDown={handleKeyDown}
+      >
+        공지(5)
+      </button>
+      <button
+        type="button"
+        id="store-news-crew-tab"
+        role="tab"
+        aria-selected={!isNotice}
+        aria-controls="store-news-crew-panel"
+        tabIndex={!isNotice ? 0 : -1}
+        className={!isNotice ? 'active' : ''}
+        onClick={() => onTabChange('crew')}
+        onKeyDown={handleKeyDown}
+      >
+        크루톡(11)
+      </button>
+    </div>
+  );
+}
+
+export function updateStoreNewsQueries(queries, tab, value) {
+  return { ...queries, [tab]: value };
+}
+
+export function StoreNews({ store = MAIN_STORE, tab = 'notice', onBack, onTabChange, onNav = () => {} }) {
+  const [queries, setQueries] = useState({ notice: '', crew: '' });
+  const isNotice = tab === 'notice';
+  const query = queries[tab];
+  const normalizedQuery = query.trim().toLocaleLowerCase('ko-KR');
+  const notices = STORE_NOTICES.filter((notice) =>
+    !normalizedQuery || `${store.name} ${notice.message}`.toLocaleLowerCase('ko-KR').includes(normalizedQuery)
+  );
+  const crewTalks = STORE_NEWS_TALKS.filter(({ product, message }) =>
+    !normalizedQuery || `${product.name} ${product.variant} ${store.name} ${message}`.toLocaleLowerCase('ko-KR').includes(normalizedQuery)
+  );
+
+  return (
+    <section className="screen active store-news-screen" id={isNotice ? 'screen-3-5-a' : 'screen-3-5-b'}>
+      <div className="screen-body">
+        <div className="topbar store-news-topbar">
+          <button type="button" className="back" onClick={onBack} aria-label="매장 상세로 돌아가기">
+            <img src="/icons/detail-back.svg" alt="" />
+          </button>
+          <h1>매장 소식</h1>
+        </div>
+
+        <StoreNewsTabs tab={tab} onTabChange={onTabChange} />
+
+        <div className="store-news-searchbar">
+          <label>
+            <span className="sr-only">{isNotice ? '매장 소식 검색' : '크루톡 상품 검색'}</span>
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => setQueries((current) => updateStoreNewsQueries(current, tab, event.target.value))}
+              placeholder={isNotice ? '궁금한 소식을 검색해보세요' : '궁금한 상품명을 검색해보세요'}
+            />
+            <img src="/icons/store-search.svg" alt="" />
+          </label>
+          <span className="store-news-sort">최신순 <img src="/icons/store-arrow.svg" alt="" /></span>
+        </div>
+
+        {isNotice ? (
+          <div
+            className="store-notice-list"
+            id="store-news-notice-panel"
+            role="tabpanel"
+            aria-labelledby="store-news-notice-tab"
+            tabIndex={0}
+          >
+            {notices.length ? notices.map((notice) => (
+              <article className="store-notice-item" key={notice.id}>
+                <div className="store-news-meta"><b>{store.name}</b><time>{notice.date}</time></div>
+                <p>{notice.message}</p>
+              </article>
+            )) : <p className="store-news-empty">검색 결과가 없습니다.</p>}
+          </div>
+        ) : (
+          <div
+            className="store-news-talk-list"
+            id="store-news-crew-panel"
+            role="tabpanel"
+            aria-labelledby="store-news-crew-tab"
+            tabIndex={0}
+          >
+            {crewTalks.length ? crewTalks.map(({ id, product, date, message }) => (
+              <article className="store-news-talk-item" key={id}>
+                <img className="product-thumb" src={product.img} alt="" />
+                <div className="store-news-talk-content">
+                  <div className="store-news-product-row">
+                    <div>
+                      <h2>{product.name}</h2>
+                      <p className="store-news-product-meta">{product.variant} · <span>잔여 재고 {product.stock}개</span></p>
+                    </div>
+                    <time>{date}</time>
+                  </div>
+                  <div className="store-news-talk-bubble"><b>{store.name}</b><p>{message}</p></div>
+                </div>
+              </article>
+            )) : <p className="store-news-empty">검색 결과가 없습니다.</p>}
+          </div>
+        )}
+      </div>
+      <BottomNav active="store" onNav={onNav} />
     </section>
   );
 }

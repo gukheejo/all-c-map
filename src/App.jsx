@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
-import { StoreHome, ProductPlaceholder, StoreDetail, Cart } from './components/Screens.jsx';
+import { StoreHome, ProductPlaceholder, StoreDetail, StoreNews, Cart } from './components/Screens.jsx';
 import MapScreen from './components/MapScreen.jsx';
 import { Dim, PickupSheet, BarcodeCard } from './components/Overlays.jsx';
 import { PRODUCTS } from './data.js';
@@ -72,9 +72,22 @@ export default function App() {
             products={selectedStoreProducts}
             onNav={goNav}
             onOrder={(product) => dispatch({ type: 'OPEN_PICKUP', product })}
+            onOpenNews={() => dispatch({ type: 'NAVIGATE', screen: '3.5a' })}
             toastShown={flow.overlay === 'added-toast'}
             onDismissToast={() => dispatch({ type: 'CLOSE_OVERLAY' })}
             onGoCart={() => dispatch({ type: 'GO_TO_CART' })}
+          />
+        )}
+        {(flow.screen === '3.5a' || flow.screen === '3.5b') && flow.selectedStore && (
+          <StoreNews
+            store={flow.selectedStore}
+            tab={flow.screen === '3.5b' ? 'crew' : 'notice'}
+            onBack={() => dispatch({ type: 'NAVIGATE', screen: '4' })}
+            onTabChange={(tab) => dispatch({
+              type: 'NAVIGATE',
+              screen: tab === 'crew' ? '3.5b' : '3.5a',
+            })}
+            onNav={goNav}
           />
         )}
         {flow.screen === '6' && (

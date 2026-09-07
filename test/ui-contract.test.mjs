@@ -27,9 +27,16 @@ const {
   getSelectedMarkerOffset,
   getStoreBounds,
 } = mapModule;
-const { Cart, StoreDetail, StoreHome } = await vite.ssrLoadModule('/src/components/Screens.jsx');
+const {
+  Cart,
+  StoreDetail,
+  StoreHome,
+  StoreNews,
+  StoreNewsTabs,
+  updateStoreNewsQueries,
+} = await vite.ssrLoadModule('/src/components/Screens.jsx');
 const { BarcodeCard, PickupSheet } = await vite.ssrLoadModule('/src/components/Overlays.jsx');
-const { CREW_TALKS, STORES, PRODUCTS } = await vite.ssrLoadModule('/src/data.js');
+const { CREW_TALKS, STORES, PRODUCTS, STORE_NEWS_TALKS } = await vite.ssrLoadModule('/src/data.js');
 const {
   FIXED_LOCATION,
   buildStoreProducts,
@@ -357,6 +364,98 @@ test('store detail and pickup sheet render the selected map store and identical 
   assert.equal((detail.match(/data-detail-product="true"/g) ?? []).length, store.stock);
   assert.match(sheet, /올리브영 충무로역점/);
   assert.match(sheet, /disabled=""/);
+});
+
+test('the store detail news button opens news for the selected store', () => {
+  const selectedStore = STORES.find((store) => store.id === 'chungmuro');
+  let openedStore = null;
+  const detail = StoreDetail({
+    store: selectedStore,
+    onNav() {},
+    onOrder() {},
+    onOpenNews(store) { openedStore = store; },
+    toastShown: true,
+    onGoCart() {},
+  });
+  const bodyChildren = detail.props.children[0].props.children;
+  const storeActions = bodyChildren.find((child) => child.props?.className === 'store-actions');
+  const newsButton = storeActions.props.children[1];
+
+  newsButton.props.onClick();
+
+  assert.equal(openedStore, selectedStore);
+});
+
+test('store news renders the selected store notice feed from Figma 3.5-a', () => {
+  const selectedStore = STORES.find((store) => store.id === 'chungmuro');
+  const html = renderToStaticMarkup(
+    React.createElement(StoreNews, {
+      store: selectedStore,
+      tab: 'notice',
+      onBack() {},
+      onTabChange() {},
+    }),
+  );
+
+  assert.match(html, /id="screen-3-5-a"/);
+  assert.match(html, /aria-selected="true"[^>]*>공지\(5\)/);
+  assert.match(html, /placeholder="궁금한 소식을 검색해보세요"/);
+  assert.match(html, /role="tabpanel"[^>]*aria-labelledby="store-news-notice-tab"/);
+  assert.equal((html.match(/class="store-notice-item/g) ?? []).length, 5);
+  assert.match(html, /올리브영 충무로역점/);
+});
+
+test('store news switches to the Figma 3.5-b Crew Talk feed', () => {
+  const selectedStore = STORES.find((store) => store.id === 'chungmuro');
+  let nextTab = null;
+  const tabs = StoreNewsTabs({
+    tab: 'notice',
+    onTabChange(tab) { nextTab = tab; },
+  });
+
+  tabs.props.children[1].props.onClick();
+  assert.equal(nextTab, 'crew');
+  nextTab = null;
+  tabs.props.children[0].props.onKeyDown({ key: 'ArrowRight' });
+  assert.equal(nextTab, 'crew');
+  nextTab = null;
+  tabs.props.children[0].props.onKeyDown({ key: 'ArrowLeft' });
+  assert.equal(nextTab, 'crew');
+  nextTab = null;
+  const crewTabs = StoreNewsTabs({ tab: 'crew', onTabChange(tab) { nextTab = tab; } });
+  crewTabs.props.children[1].props.onKeyDown({ key: 'ArrowRight' });
+  assert.equal(nextTab, 'notice');
+
+  const tabsHtml = renderToStaticMarkup(
+    React.createElement(StoreNewsTabs, { tab: 'notice', onTabChange() {} }),
+  );
+  assert.match(tabsHtml, /id="store-news-notice-tab"[^>]*aria-controls="store-news-notice-panel"[^>]*tabindex="0"/);
+  assert.match(tabsHtml, /id="store-news-crew-tab"[^>]*aria-controls="store-news-crew-panel"[^>]*tabindex="-1"/);
+
+  const html = renderToStaticMarkup(
+    React.createElement(StoreNews, {
+      store: selectedStore,
+      tab: 'crew',
+      onBack() {},
+      onTabChange() {},
+    }),
+  );
+  assert.match(html, /id="screen-3-5-b"/);
+  assert.match(html, /aria-selected="true"[^>]*>크루톡\(11\)/);
+  assert.match(html, /placeholder="궁금한 상품명을 검색해보세요"/);
+  assert.match(html, /role="tabpanel"[^>]*aria-labelledby="store-news-crew-tab"/);
+  assert.equal(STORE_NEWS_TALKS.length, 11);
+  assert.equal((html.match(/class="store-news-talk-item/g) ?? []).length, 11);
+  assert.equal((html.match(/올리브영 충무로역점/g) ?? []).length, 11);
+  assert.doesNotMatch(html, /명동거리점|올리브영 명동대로점|올리브영 명동역점/);
+});
+
+test('notice and Crew Talk searches keep independent query values', () => {
+  const noticeQueries = updateStoreNewsQueries({ notice: '', crew: '' }, 'notice', '입고알림');
+  const crewQueries = updateStoreNewsQueries(noticeQueries, 'crew', '브링그린');
+
+  assert.deepEqual(noticeQueries, { notice: '입고알림', crew: '' });
+  assert.deepEqual(crewQueries, { notice: '입고알림', crew: '브링그린' });
 });
 
 test('store detail renders expiry and package-damage labels as condition badges', () => {
