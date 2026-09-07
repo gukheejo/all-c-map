@@ -292,7 +292,9 @@ test('the Crew Talk sheet renders the searchable Figma 3-e feed', () => {
   assert.match(html, /class="sheet show collapsed crew-talk-sheet"/);
   assert.match(html, /data-sheet-drag-region="true"/);
   assert.match(html, /aria-label="크루톡 목록 펼치기"/);
-  assert.match(html, />크루톡</);
+  assert.match(html, /<h2 class="store-title">크루톡<\/h2>/);
+  assert.doesNotMatch(html, /aria-label="크루톡 바텀시트 닫기"/);
+  assert.doesNotMatch(html, /src="\/icons\/map-link\.svg"/);
   assert.match(html, /placeholder="궁금한 상품명을 검색해보세요"/);
   assert.match(html, /aria-label="크루톡 정렬"/);
   assert.match(html, /value="latest" selected="">최신순/);

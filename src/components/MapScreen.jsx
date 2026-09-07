@@ -304,7 +304,6 @@ export function CrewTalkSheet({
   onSheetStateChange,
   onSortOrderChange,
   onToggleTalk,
-  onClose,
 }) {
   const sheetRef = useRef(null);
   const gesture = useSheetGesture(sheetRef, sheetState, onSheetStateChange, true);
@@ -324,9 +323,7 @@ export function CrewTalkSheet({
         >
           <span className="sheet-handle" />
         </button>
-        <button type="button" className="store-title" onClick={onClose} aria-label="크루톡 바텀시트 닫기">
-          크루톡<img src="/icons/map-link.svg" alt="" />
-        </button>
+        <h2 className="store-title">크루톡</h2>
       </div>
       <div className="crew-talk-search-row">
         <label className="crew-talk-search">
@@ -559,12 +556,6 @@ export default function MapScreen({ onNav, onOpenProduct, onOpenStore, onOpenNew
     setCrewTalkOpen(true);
   }
 
-  function closeCrewTalk() {
-    setCrewTalkOpen(false);
-    setCrewTalkSheetState('collapsed');
-    setShowSearchButton(true);
-  }
-
   const visibleCrewTalks = sortDatedItems(
     filterCrewTalkItems(CREW_TALKS, crewTalkQuery),
     crewTalkSortOrder,
@@ -631,7 +622,6 @@ export default function MapScreen({ onNav, onOpenProduct, onOpenStore, onOpenNew
             onSheetStateChange={setCrewTalkSheetState}
             onSortOrderChange={setCrewTalkSortOrder}
             onToggleTalk={(id) => setExpandedTalkIds((current) => toggleExpandedId(current, id))}
-            onClose={closeCrewTalk}
           />
         )}
       </div>
