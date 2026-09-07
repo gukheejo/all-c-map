@@ -12,7 +12,7 @@ export const STORES = [
   { id: 'chungmuro', name: '올리브영 충무로역점', addr: '서울특별시 중구 퇴계로 222 (필동2가)', lat: 37.5615827, lng: 126.9962525, stock: 7, ai: true, photo: 'https://image.oliveyoung.co.kr/cfimages/oystore/D031_1.jpg?RS=1024x0&QT=85' },
   { id: 'daero', name: '올리브영 명동대로점', addr: '서울특별시 중구 퇴계로 120', lat: 37.5606047, lng: 126.9850862, stock: 14, photo: 'https://image.oliveyoung.co.kr/cfimages/oystore/D316_202502520942011.png?RS=1024x0&QT=85' },
   { id: 'yeok', name: '올리브영 명동역점', addr: '서울특별시 중구 퇴계로 115 밀리오레', lat: 37.5610311, lng: 126.984686, stock: 3, photo: 'https://image.oliveyoung.co.kr/cfimages/oystore/DE93_2024102971353051.jpg?RS=1024x0&QT=85' },
-  { id: 'street', name: '올리브영 명동거리점', addr: '서울특별시 중구 명동8나길 9 (충무로1가)', lat: 37.5613292, lng: 126.9844486, stock: 5 },
+  { id: 'street', name: '올리브영 명동거리점', addr: '서울특별시 중구 명동8나길 9 (충무로1가)', lat: 37.5613292, lng: 126.9844486, stock: 5, photo: 'https://image.oliveyoung.co.kr/cfimages/oystore/DF3C_2025051470910071.png?rs=1200x0&sf=webp&autoorient=y' },
   { id: 'jum', name: '올리브영 명동점', addr: '서울특별시 중구 명동8길 14', lat: 37.5629174, lng: 126.9849426, stock: 9, photo: 'https://image.oliveyoung.co.kr/cfimages/oystore/DDEC_1.jpg?rs=1200x0&sf=webp&autoorient=y' },
   { id: 'central', name: '올리브영 센트럴 명동 타운', addr: '서울특별시 중구 명동8길 27 (엠플라자)', lat: 37.5616385, lng: 126.9849097, stock: 13, photo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSLtsfJCgDAu3osuVzwlGP6Km5zsM1wueztBXTrqsloQw&s=10' },
   { id: 'timewalk', name: '올리브영 명동타임워크점', addr: '서울특별시 중구 남대문로 78', lat: 37.5643473, lng: 126.9829236, stock: 8, photo: 'https://image.oliveyoung.co.kr/cfimages/oystore/DD6F_1.jpg?RS=1024x0&QT=85' },
