@@ -46,7 +46,17 @@ const {
   updateStoreNewsQueries,
 } = await vite.ssrLoadModule('/src/components/Screens.jsx');
 const { BarcodeCard, PickupSheet } = await vite.ssrLoadModule('/src/components/Overlays.jsx');
-const { CREW_TALKS, EXCLUSIVE_PRODUCTS, STORES, PRODUCTS, STORE_NEWS_TALKS, STORE_NOTICES, getStoreNewsForStore } = await vite.ssrLoadModule('/src/data.js');
+const {
+  CREW_TALKS,
+  EXCLUSIVE_PRODUCTS,
+  MAIN_STORE,
+  STORES,
+  PRODUCTS,
+  STORE_NEWS_TALKS,
+  STORE_NOTICES,
+  getStoreCrewTalkMessage,
+  getStoreNewsForStore,
+} = await vite.ssrLoadModule('/src/data.js');
 const {
   FIXED_LOCATION,
   buildStoreProducts,
@@ -167,6 +177,9 @@ test('the store home renders the missing Figma sections around the fixed locatio
   const html = renderToStaticMarkup(
     React.createElement(StoreHome, { onNav() {} }),
   );
+  const exclusiveIndex = html.indexOf('[온페한정] 행운만땅 올클맵 엽서 기획세트');
+  const remainingRecommendationIndex = html.indexOf(PRODUCTS[0].name);
+  const recommendationCards = html.match(/<article class="reco-item">.*?<\/article>/gs) ?? [];
 
   assert.match(html, /aria-label="매장 검색"/);
   assert.match(html, /aria-label="장바구니"/);
@@ -177,6 +190,15 @@ test('the store home renders the missing Figma sections around the fixed locatio
   assert.equal((html.match(/class="store-gift-notice"/g) ?? []).length, 2);
   assert.match(html, /올리브영 충무로역점/);
   assert.match(html, /0\.0km/);
+  assert.ok(exclusiveIndex >= 0 && exclusiveIndex < remainingRecommendationIndex);
+  assert.equal((html.match(/class="badge-ai">AI PICK<\/span>/g) ?? []).length, 2);
+  assert.match(recommendationCards[0], /class="badge-ai">AI PICK<\/span>/);
+  assert.match(recommendationCards[1], /\[레오파드 헬로키티\] 웨이크메이크 19종 골라담기/);
+  assert.match(recommendationCards[1], /class="badge-ai">AI PICK<\/span>/);
+  assert.match(recommendationCards[1], /class="condition-badge">패키지 파손<\/span>/);
+  assert.match(html, /부적 같은 엽서/);
+  assert.match(html, /사원증/);
+  assert.match(html, /src="\/photos\/store-cj-training-center\.png"/);
 });
 
 test('the All-C-Map quick tile uses the clover artwork and recommendation copy starts collapsed', () => {
@@ -222,12 +244,24 @@ test('the store entry page renders its preview on a Kakao map surface', () => {
 
 test('the store entry map preview and recommended products expose detail navigation controls', () => {
   const html = renderToStaticMarkup(
-    React.createElement(StoreHome, { onNav() {}, onOpenProduct() {} }),
+    React.createElement(StoreHome, { onNav() {}, onOpenProduct() {}, onOpenStore() {} }),
   );
 
   assert.match(html, /<button[^>]*aria-label="올클맵 지도 미리보기 열기"/);
+  assert.match(html, /<button[^>]*aria-label="\[온페한정\] 행운만땅 올클맵 엽서 기획세트 상품 상세 보기"/);
   assert.match(html, /<button[^>]*aria-label="\[레오파드 헬로키티\] 웨이크메이크 19종 골라담기 상품 상세 보기"/);
-  assert.match(html, /<button[^>]*aria-label="벨먼 고보습 크리미 스크럽워시 400\+75ml 상품 상세 보기"/);
+  assert.match(html, /<button[^>]*aria-label="올리브영 CJ인재원점 매장 상세 보기"/);
+  assert.match(html, /<button[^>]*aria-label="올리브영 충무로역점 매장 상세 보기"/);
+});
+
+test('the CJ training center thumbnail shifts its crop farther to the left', async () => {
+  const html = renderToStaticMarkup(
+    React.createElement(StoreHome, { onNav() {}, onOpenStore() {} }),
+  );
+  const styles = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8');
+
+  assert.match(html, /class="thumb thumb-cj"/);
+  assert.match(styles, /\.store-card img\.thumb-cj\{[^}]*object-position:36% center/);
 });
 
 test('the compact Kakao preview centers the selected store inside its short viewport', () => {
@@ -312,16 +346,135 @@ test('the Crew Talk sheet renders the searchable Figma 3-e feed', () => {
   assert.match(html, /aria-label="크루톡 정렬"/);
   assert.match(html, /value="latest" selected="">최신순/);
   assert.match(html, /value="registered">등록순/);
-  assert.equal((html.match(/class="crew-talk-feed-item"/g) ?? []).length, 10);
-  assert.equal((html.match(/aria-expanded="false"/g) ?? []).length, 10);
+  assert.equal((html.match(/class="crew-talk-feed-item"/g) ?? []).length, 48);
+  assert.equal((html.match(/aria-expanded="false"/g) ?? []).length, 48);
+  assert.equal((html.match(/class="crew-talk-location"/g) ?? []).length, 48);
+  STORES.forEach((store) => assert.match(html, new RegExp(store.name)));
 });
 
 test('the All-C-Map Crew Talk feed aggregates every nearby store', () => {
-  assert.equal(CREW_TALKS.length, 10);
+  const expectedCounts = {
+    town: 4,
+    chungmuro: 6,
+    daero: 5,
+    yeok: 7,
+    street: 3,
+    jum: 5,
+    central: 4,
+    timewalk: 7,
+    myeongdong2ga: 3,
+    'cj-training-center': 4,
+  };
+
+  assert.equal(CREW_TALKS.length, 48);
   assert.deepEqual(
     new Set(CREW_TALKS.map((item) => item.store.id)),
     new Set(STORES.map((store) => store.id)),
   );
+  STORES.forEach((store) => {
+    const storeTalks = CREW_TALKS.filter((item) => item.store.id === store.id);
+
+    assert.equal(storeTalks.length, expectedCounts[store.id]);
+  });
+});
+
+test('Crew Talk messages change with the attached product', () => {
+  const messages = PRODUCTS.map((product) => getStoreCrewTalkMessage(STORES[0], product));
+
+  assert.equal(new Set(messages).size, PRODUCTS.length);
+});
+
+test('Crew Talk messages stay short enough to scan on mobile', () => {
+  STORES.forEach((store) => {
+    PRODUCTS.forEach((product) => {
+      const message = getStoreCrewTalkMessage(store, product);
+      assert.ok(
+        message.length <= 120,
+        `${store.id}/${product.id} Crew Talk exceeds 120 characters`,
+      );
+      assert.ok(
+        (message.match(/\p{Extended_Pictographic}/gu) ?? []).length <= 1,
+        `${store.id}/${product.id} Crew Talk uses more than one emoji`,
+      );
+    });
+  });
+
+  STORE_NEWS_TALKS.forEach(({ message }) => {
+    assert.ok(message.length <= 90, 'store news Crew Talk exceeds 90 characters');
+    assert.ok(
+      (message.match(/\p{Extended_Pictographic}/gu) ?? []).length <= 1,
+      'store news Crew Talk uses more than one emoji',
+    );
+  });
+});
+
+test('the same product gets stable but different Crew Talk copy at each store', () => {
+  assert.equal(typeof getStoreCrewTalkMessage, 'function');
+
+  const product = PRODUCTS[0];
+  const stores = STORES.slice(0, 3);
+  const messages = stores.map((store) => getStoreCrewTalkMessage(store, product));
+
+  assert.equal(new Set(messages).size, stores.length);
+  assert.equal(new Set(messages.map((message) => message.slice(-20))).size, stores.length);
+  assert.equal(getStoreCrewTalkMessage(stores[0], product), messages[0]);
+  assert.equal(getStoreCrewTalkMessage(MAIN_STORE, product), messages[0]);
+});
+
+test('Crew Talk messages omit formulaic recommendation endings', () => {
+  const messages = STORES.flatMap((store) => (
+    PRODUCTS.map((product) => getStoreCrewTalkMessage(store, product))
+  ));
+
+  assert.doesNotMatch(
+    messages.join('\n'),
+    /크루도 자신 있게 추천해요|써볼수록 매력이 또렷해요|간단하게 써도 만족감이 좋아요|요즘 은근히 손이 자주 가요|처음 써봐도 어렵지 않아요|꾸준히 쓰기 좋은 포인트예요|비슷한 제품과 비교해도 돋보였어요|활용할수록 진가가 보여요|한 번 써보면 이유를 알 거예요|부담 없이 시작하기 좋아요|크루가 직접 써보고 골랐어요/,
+  );
+});
+
+test('the CJ training center uses the supplied Crew Talk copy for WakeMake and Belman', () => {
+  const cjStore = STORES.find((store) => store.id === 'cj-training-center');
+
+  assert.equal(
+    getStoreCrewTalkMessage(cjStore, PRODUCTS[0]),
+    '컬러 조합이 다양해서 웜톤, 쿨톤 모두 원하는 분위기로 골라 쓰기 좋아요! 은은한 음영부터 포인트 글리터까지 한 팔레트로 연출할 수 있어 데일리 메이크업으로 추천해요.',
+  );
+  assert.equal(
+    getStoreCrewTalkMessage(cjStore, PRODUCTS[2]),
+    '은은한 향과 촉촉한 마무리감 때문에 바디 케어 입문용으로 추천해요. 부드러운 스크럽 알갱이가 각질을 순하게 정돈해 주고, 샤워 후에도 당김 없이 촉촉해서 건조한 계절에 쓰기 좋아요.',
+  );
+});
+
+test('Crew Talk copy stays focused on products instead of invented store situations', () => {
+  const messages = STORES.flatMap((store) => (
+    PRODUCTS.map((product) => getStoreCrewTalkMessage(store, product))
+  ));
+
+  assert.doesNotMatch(
+    messages.join('\n'),
+    /일정 사이|출근길|점심 틈새|여행 파우치|퇴근길|늦은 쇼핑/,
+  );
+});
+
+test('store sheets render different Crew Talk copy for the same product', () => {
+  const renderFirstTalk = (store) => {
+    const html = renderToStaticMarkup(React.createElement(StoreSheet, {
+      store,
+      sheetState: 'collapsed',
+      onToggle() {},
+      onOpenProduct() {},
+      onOpenStore() {},
+      onOpenNews() {},
+    }));
+    return html.match(/class="crewtalk-text">([^<]+)<\/span>/)?.[1];
+  };
+
+  const townTalk = renderFirstTalk(STORES[0]);
+  const chungmuroTalk = renderFirstTalk(STORES[1]);
+
+  assert.ok(townTalk);
+  assert.ok(chungmuroTalk);
+  assert.notEqual(townTalk, chungmuroTalk);
 });
 
 test('Crew Talk search matches product, store, variant, and message keywords', () => {
@@ -329,17 +482,21 @@ test('Crew Talk search matches product, store, variant, and message keywords', (
 
   assert.deepEqual(
     filterCrewTalkItems(CREW_TALKS, '벨먼').map((item) => item.id),
-    ['talk-p3'],
+    ['town-store-talk-3', 'chungmuro-store-talk-1', 'timewalk-store-talk-4', 'myeongdong2ga-store-talk-2', 'cj-training-center-store-talk-3'],
   );
   assert.deepEqual(
     filterCrewTalkItems(CREW_TALKS, '명동2가점').map((item) => item.id),
-    ['talk-p9'],
+    ['myeongdong2ga-store-talk-1', 'myeongdong2ga-store-talk-2', 'myeongdong2ga-store-talk-3'],
   );
   assert.deepEqual(
-    filterCrewTalkItems(CREW_TALKS, '가을 메이크업').map((item) => item.id),
-    ['talk-p2'],
+    filterCrewTalkItems(CREW_TALKS, '02 로지 블러').map((item) => item.id),
+    ['town-store-talk-4', 'chungmuro-store-talk-2', 'timewalk-store-talk-5', 'myeongdong2ga-store-talk-3'],
   );
-  assert.equal(filterCrewTalkItems(CREW_TALKS, '없는 상품').length, 0);
+  assert.deepEqual(
+    filterCrewTalkItems(CREW_TALKS, '애굣살').map((item) => item.id),
+    ['town-store-talk-1', 'central-store-talk-4'],
+  );
+  assert.equal(filterCrewTalkItems(CREW_TALKS, '존재하지않는검색어').length, 0);
 });
 
 test('dated feeds switch between newest-first and oldest-first registration order', () => {
@@ -438,6 +595,7 @@ test('the CJ training center store appears first at the fixed Pildong address', 
     lng: 126.995635,
     stock: 8,
     ai: true,
+    photo: '/photos/store-cj-training-center.png',
     exclusiveProductIds: ['ONLYONEFAIR-CLOVER-MAP'],
   }]);
 });
@@ -457,12 +615,61 @@ test('Pildong-ro 26 is the fixed location and ranks the CJ training center first
   assert.equal(walkingMinutes(nearestDistance), 1);
 });
 
-test('the CJ training center marker has minimal placeholder news until details are defined', () => {
+test('the CJ training center news reuses every Crew Talk shown in its store catalog', () => {
   const store = STORES.find((item) => item.id === 'cj-training-center');
   const news = getStoreNewsForStore(store);
 
-  assert.equal(news.notices.length, 1);
-  assert.equal(news.crewTalks.length, 1);
+  assert.equal(news.notices.length, 2);
+  assert.deepEqual(
+    news.crewTalks.map(({ product }) => product.id),
+    ['ONLYONEFAIR-CLOVER-MAP', 'A000000266721', 'A000000250140', 'A000000262413'],
+  );
+});
+
+test('the CJ training center keeps its latest map notice in the store-news notice feed', () => {
+  const store = STORES.find((item) => item.id === 'cj-training-center');
+  const latestNotice = '[입고알림] 라스트픽 온라인 입고 완료되었습니다.';
+  const news = getStoreNewsForStore(store);
+  const sheetHtml = renderToStaticMarkup(React.createElement(StoreSheet, {
+    store,
+    sheetState: 'collapsed',
+    onToggle() {},
+    onOpenProduct() {},
+    onOpenStore() {},
+    onOpenNews() {},
+  }));
+  const newsHtml = renderToStaticMarkup(React.createElement(StoreNews, {
+    store,
+    tab: 'notice',
+    onBack() {},
+    onTabChange() {},
+  }));
+
+  assert.equal(news.notices[0].message, latestNotice);
+  assert.equal(news.notices[0].date, '2026.09.08');
+  assert.match(sheetHtml, new RegExp(latestNotice.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.match(sheetHtml, /2026\.09\.08/);
+  assert.match(newsHtml, new RegExp(latestNotice.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.match(newsHtml, /2026\.09\.08/);
+});
+
+test('the CJ training center keeps the older stock notice below its latest notice', () => {
+  const store = STORES.find((item) => item.id === 'cj-training-center');
+  const news = getStoreNewsForStore(store);
+
+  assert.deepEqual(
+    news.notices.map(({ date, message }) => ({ date, message })),
+    [
+      {
+        date: '2026.09.08',
+        message: '[입고알림] 라스트픽 온라인 입고 완료되었습니다.',
+      },
+      {
+        date: '2026.08.16',
+        message: '[재고안내] 인기 색상은 조기 품절될 수 있으며 매장 상황에 따라 수량이 달라질 수 있습니다.',
+      },
+    ],
+  );
 });
 
 test('a marker stock number produces unique rows without exceeding the catalog', () => {
@@ -489,16 +696,22 @@ test('product Crew Talk cards are distributed through the store list', () => {
   assert.ok(PRODUCTS.slice(0, 8).some((product) => !product.talk));
 });
 
-test('the same product gets stable, distinct Crew Talk copy for every store', () => {
+test('store catalogs reuse stable product-specific Crew Talk variants without location prefixes', () => {
   const messages = STORES.map((store) => (
-    buildStoreProductsForStore(PRODUCTS, { ...store, stock: 1 })[0].talk
+    buildStoreProducts(PRODUCTS, 1, 3, store)[0].talk
   ));
-  const townMessage = buildStoreProductsForStore(PRODUCTS, { ...STORES[0], stock: 1 })[0].talk;
+  const townMessage = buildStoreProducts(PRODUCTS, 1, 3, STORES[0])[0].talk;
 
-  assert.equal(new Set(messages).size, STORES.length);
+  assert.ok(new Set(messages).size >= 3);
   assert.equal(townMessage, messages[0]);
-  assert.match(messages[0], /명동 타운/);
-  assert.match(messages[1], /충무로역점/);
+  STORES.forEach((store, index) => {
+    assert.equal(messages[index], getStoreCrewTalkMessage(store, PRODUCTS[0]));
+    assert.equal(
+      buildStoreProducts(PRODUCTS, 1, 3, store.id)[0].talk,
+      messages[index],
+    );
+    assert.doesNotMatch(messages[index], new RegExp(store.name.replace(/^올리브영\s*/, '')));
+  });
 });
 
 test('a generated store product list exposes at most three AI PICK labels', () => {
@@ -679,6 +892,8 @@ test('expandable Crew Talk keeps its message in the accessible name', () => {
   }));
 
   assert.doesNotMatch(html, /aria-label=/);
+  assert.doesNotMatch(html, /<b>올리브영 충무로역점<\/b>/);
+  assert.match(html, /<b>크루 TALK<\/b><span class="crewtalk-text">/);
   assert.match(html, /입고된 상품을 확인해보세요\./);
   assert.match(html, /class="sr-only">전체 내용 보기/);
 });
@@ -700,8 +915,8 @@ test('the selected store sheet renders one row per marker stock number', () => {
   assert.equal((html.match(/class="orig"/g) ?? []).length, 7);
   assert.match(html, /class="orig">44,000원<\/span>/);
   assert.match(html, /class="sheet-notice-card"/);
-  assert.match(html, /\[입고알림\] 라스트픽 온라인 입고 완료되었습니다\./);
-  assert.match(html, /12분 전/);
+  assert.match(html, /\[픽업안내\] 충무로역점 픽업존 운영 시간이 변경되었습니다\./);
+  assert.match(html, /2026\.09\.01/);
 });
 
 test('the map store notice card opens the selected store notice tab', () => {
@@ -864,7 +1079,7 @@ test('store news switches to the Figma 3.5-b Crew Talk feed', () => {
   assert.match(html, /role="tabpanel"[^>]*aria-labelledby="store-news-crew-tab"/);
   assert.equal(STORE_NEWS_TALKS.length, 11);
   assert.equal((html.match(/class="store-news-talk-item/g) ?? []).length, 6);
-  assert.equal((html.match(/<b>올리브영 충무로역점<\/b>/g) ?? []).length, 6);
+  assert.doesNotMatch(html, /<b>올리브영 충무로역점<\/b>/);
   assert.equal((html.match(/aria-expanded="false"/g) ?? []).length, 6);
   assert.doesNotMatch(html, /명동거리점|올리브영 명동대로점|올리브영 명동역점/);
 });
@@ -897,7 +1112,7 @@ test('store-news Crew Talk products open detail and return to the Crew Talk tab'
   assert.equal(state.screen, '3.5b');
 });
 
-test('store news uses stable store-specific counts, dates, and copy', () => {
+test('store news uses stable store-specific counts, dates, and notice copy', () => {
   const town = STORES.find((store) => store.id === 'town');
   const chungmuro = STORES.find((store) => store.id === 'chungmuro');
   const renderNews = (store, tab) => renderToStaticMarkup(
@@ -911,19 +1126,29 @@ test('store news uses stable store-specific counts, dates, and copy', () => {
 
   const townNotices = renderNews(town, 'notice');
   const chungmuroNotices = renderNews(chungmuro, 'notice');
-  const townTalks = renderNews(town, 'crew');
-  const chungmuroTalks = renderNews(chungmuro, 'crew');
 
   assert.equal((townNotices.match(/class="store-notice-item/g) ?? []).length, 3);
   assert.equal((chungmuroNotices.match(/class="store-notice-item/g) ?? []).length, 5);
-  assert.equal((townTalks.match(/class="store-news-talk-item/g) ?? []).length, 4);
-  assert.equal((chungmuroTalks.match(/class="store-news-talk-item/g) ?? []).length, 6);
+  assert.equal(getStoreNewsForStore(town).crewTalks.length, 4);
+  assert.equal(getStoreNewsForStore(chungmuro).crewTalks.length, 6);
   assert.match(townNotices, /2026\.09\.03/);
   assert.match(chungmuroNotices, /2026\.09\.01/);
   assert.match(townNotices, /명동 타운 한정/);
   assert.match(chungmuroNotices, /충무로역점 픽업존/);
-  assert.match(townTalks, /명동 타운 크루가 추천하는/);
-  assert.match(chungmuroTalks, /충무로역점 크루가 직접 비교한/);
+});
+
+test('store news Crew Talk copy stays product-specific without a location prefix', () => {
+  const messagesByStore = STORES.map((store) => getStoreNewsForStore(store).crewTalks);
+
+  STORES.forEach((store, storeIndex) => {
+    const label = store.name.replace(/^올리브영\s*/, '');
+    const storeMessages = messagesByStore[storeIndex].map((item) => item.message);
+
+    assert.equal(new Set(storeMessages).size, storeMessages.length);
+    messagesByStore[storeIndex].forEach(({ message }) => {
+      assert.equal(message.startsWith(`${label} 크루`), false);
+    });
+  });
 });
 
 test('every product Crew Talk surface starts ellipsized and can expose expansion state', () => {
@@ -956,14 +1181,14 @@ test('every product Crew Talk surface starts ellipsized and can expose expansion
   );
 });
 
-test('every Crew Talk feed provides enough copy to visibly demonstrate collapsed ellipsis', () => {
+test('every Crew Talk feed keeps enough detail for a useful product tip', () => {
   const messages = [
     ...CREW_TALKS.map((item) => item.message),
     ...STORE_NEWS_TALKS.map((item) => item.message),
   ];
 
   assert.ok(messages.length >= 21);
-  assert.ok(messages.every((message) => message.length >= 70));
+  assert.ok(messages.every((message) => message.length >= 30));
 });
 
 test('store-detail Crew Talk is constrained to the card width', async () => {
@@ -1096,7 +1321,7 @@ test('the Kakao camera pans the selected marker above the sheet', () => {
 
 test('the initial map viewport can fit all ten nearby stores', () => {
   const nearest = selectNearestStores(STORES, FIXED_LOCATION, 10);
-  assert.deepEqual(getStoreBounds(nearest), [[126.9822809, 37.559175], [126.9962525, 37.5641193]]);
+  assert.deepEqual(getStoreBounds(nearest), [[126.9822809, 37.559175], [126.9962525, 37.5643473]]);
 });
 
 test('the initial Kakao map view never opens wider than level five', () => {
@@ -1146,6 +1371,7 @@ test('bottom navigation slides below the viewport while a bottom sheet is open',
 
 test('the ONLYONEFAIR clover postcard set is a free CJ training center exclusive', () => {
   const postcard = EXCLUSIVE_PRODUCTS.find((product) => product.id === 'ONLYONEFAIR-CLOVER-MAP');
+  const cjStore = STORES.find((store) => store.id === 'cj-training-center');
 
   assert.ok(postcard);
   assert.equal(postcard.name, '[온페한정] 행운만땅 올클맵 엽서 기획세트');
@@ -1153,8 +1379,16 @@ test('the ONLYONEFAIR clover postcard set is a free CJ training center exclusive
   assert.equal(postcard.orig, 7770000);
   assert.equal(postcard.price, 0);
   assert.equal(postcard.pct, 100);
+  assert.equal(postcard.badge, 'AI PICK');
+  assert.equal(postcard.variant, '올클맵 QR 엽서 1매 + 네잎클로버 클립 1개');
+  assert.doesNotMatch(`${postcard.variant}\n${postcard.summary}`, /네 잎 클로버/);
   assert.ok(postcard.stock >= 1);
   assert.equal(PRODUCTS.some((product) => product.id === postcard.id), false);
+  assert.equal(cjStore.photo, '/photos/store-cj-training-center.png');
+  assert.equal(
+    getStoreCrewTalkMessage(cjStore, postcard),
+    '행운을 가져다주는 부적 같은 엽서에 클로버 클립까지🍀 사원증에 달아도 귀여워요! 얼른 겟해가세요 >_<',
+  );
 });
 
 test('only the CJ training center pins the exclusive postcard onto its catalog', () => {
@@ -1177,7 +1411,11 @@ test('the CJ training center lists eight rows led by the exclusive postcard', ()
   assert.equal(rows.length, 8);
   assert.equal(new Set(rows.map((product) => product.id)).size, 8);
   assert.equal(rows[0].id, 'ONLYONEFAIR-CLOVER-MAP');
+  assert.equal(rows[0].badge, 'AI PICK');
+  assert.equal(rows.filter((product) => product.badge === 'AI PICK').length, 3);
   assert.equal(rows[0].badge2, undefined);
+  assert.equal(rows.find((product) => product.id === 'A000000266721').badge2, '패키지 파손');
+  assert.equal(rows.find((product) => product.id === 'A000000223414').badge2, undefined);
   assert.deepEqual(
     rows.slice(1).map((product) => product.id),
     PRODUCTS.slice(0, 7).map((product) => product.id),

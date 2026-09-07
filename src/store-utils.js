@@ -1,4 +1,4 @@
-import { EXCLUSIVE_PRODUCTS } from './data.js';
+import { EXCLUSIVE_PRODUCTS, getStoreCrewTalkMessage } from './data.js';
 
 export const FIXED_LOCATION = Object.freeze({
   address: '서울시 중구 필동로 26 (필동2가 101-1)',
@@ -41,14 +41,12 @@ export function walkingMinutes(kilometers) {
 }
 
 const CONDITION_BADGES = [undefined, '유통기한', '패키지 파손'];
-const STORE_CREW_TALK_OPENERS = [
-  (label) => `${label}에서 직접 발색과 사용감을 비교해 본 크루의 팁이에요.`,
-  (label) => `${label} 고객들이 자주 물어보신 포인트를 크루가 정리했어요.`,
-  (label) => `${label} 크루가 데일리로 써 보고 남긴 솔직한 사용 팁이에요.`,
-  (label) => `${label}에서 이 제품을 찾는 분들께 크루가 꼭 알려드리는 팁이에요.`,
-  (label) => `${label} 크루들이 추천 조합을 테스트한 뒤 남긴 코멘트예요.`,
-  (label) => `${label}에서 픽업하실 때 함께 참고해 보세요. 크루가 직접 확인한 팁이에요.`,
-];
+const STORE_PRODUCT_CONDITION_OVERRIDES = {
+  'cj-training-center': {
+    A000000266721: '패키지 파손',
+    A000000223414: undefined,
+  },
+};
 
 function hashStoreId(storeId) {
   return [...String(storeId ?? '')].reduce(
@@ -73,15 +71,6 @@ function buildStoreConditions(count, storeId) {
   return conditions;
 }
 
-function buildStoreCrewTalk(product, store, index) {
-  if (!product.talk || !store?.name) return product.talk;
-
-  const label = store.name.replace(/^올리브영\s*/, '');
-  const openerIndex = hashStoreId(`${store.id}:${product.id}:${index}`)
-    % STORE_CREW_TALK_OPENERS.length;
-  return `${STORE_CREW_TALK_OPENERS[openerIndex](label)} ${product.talk}`;
-}
-
 export function buildStoreProducts(products, count, aiLimit = 3, storeContext) {
   if (!products.length || count <= 0) return [];
 
@@ -89,15 +78,19 @@ export function buildStoreProducts(products, count, aiLimit = 3, storeContext) {
   let aiPicks = 0;
   const storeProducts = products.slice(0, count);
   const conditions = buildStoreConditions(storeProducts.length, storeId);
+  const conditionOverrides = STORE_PRODUCT_CONDITION_OVERRIDES[storeId] ?? {};
   return storeProducts.map((source, index) => {
     const showAiPick = source.badge === 'AI PICK' && aiPicks < aiLimit;
+    const condition = Object.hasOwn(conditionOverrides, source.id)
+      ? conditionOverrides[source.id]
+      : conditions[index];
     if (showAiPick) aiPicks += 1;
 
     return {
       ...source,
       badge: showAiPick ? source.badge : undefined,
-      badge2: source.exclusive ? source.badge2 : conditions[index],
-      talk: buildStoreCrewTalk(source, storeContext, index),
+      badge2: source.exclusive ? source.badge2 : condition,
+      talk: source.talk ? getStoreCrewTalkMessage(storeContext, source) : source.talk,
       listKey: `${source.id}-${index}`,
     };
   });

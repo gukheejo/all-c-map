@@ -65,11 +65,12 @@ export default function App() {
               if (id === '3b') dispatch({ type: 'ENTER_MAP' });
               else goNav(id);
             }}
-            onOpenProduct={(id) => openProduct(
+            onOpenProduct={(id, store) => openProduct(
               id,
-              STORES.find((store) => store.id === 'chungmuro'),
+              store ?? STORES.find((item) => item.id === 'chungmuro'),
               '2',
             )}
+            onOpenStore={(store) => dispatch({ type: 'OPEN_STORE', store })}
           />
         )}
         {flow.screen === '3b' && (
