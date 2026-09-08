@@ -53,7 +53,8 @@ export default function App() {
     : [];
   const productObj = selectedStoreProducts.find((product) => product.id === flow.productId)
     ?? PRODUCTS.find((product) => product.id === flow.productId);
-  const cartStore = flow.cart[0]?.store ?? flow.selectedStore;
+  const selectedCart = flow.cart.filter((entry) => entry.selected !== false);
+  const cartStore = selectedCart[0]?.store ?? flow.cart[0]?.store ?? flow.selectedStore;
   const dimVisible = flow.overlay === 'pickup-sheet' || flow.overlay === 'barcode';
   const layoutMode = flow.screen === '3b' ? 'viewport' : 'document';
 
@@ -124,6 +125,9 @@ export default function App() {
             cart={flow.cart}
             store={cartStore}
             onQtyChange={(index, delta) => dispatch({ type: 'CHANGE_CART_QTY', index, delta })}
+            onToggleItem={(index) => dispatch({ type: 'TOGGLE_CART_ITEM', index })}
+            onToggleAll={(selected) => dispatch({ type: 'SET_ALL_CART_SELECTED', selected })}
+            onDeleteSelected={() => dispatch({ type: 'DELETE_SELECTED_CART_ITEMS' })}
             onPurchase={purchase}
           />
         )}

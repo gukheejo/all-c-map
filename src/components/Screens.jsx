@@ -530,9 +530,21 @@ export function StoreNews({ store = MAIN_STORE, tab = 'notice', onBack, onTabCha
   );
 }
 
-export function Cart({ onNav, cart, store = MAIN_STORE, onQtyChange, onPurchase }) {
-  const origSum = cart.reduce((s, e) => s + e.product.orig * e.qty, 0);
-  const totalSum = cart.reduce((s, e) => s + e.product.price * e.qty, 0);
+export function Cart({
+  onNav,
+  cart,
+  store = MAIN_STORE,
+  onQtyChange,
+  onToggleItem,
+  onToggleAll,
+  onDeleteSelected,
+  onPurchase,
+}) {
+  const selectedCart = cart.filter((entry) => entry.selected !== false);
+  const selectedCount = selectedCart.length;
+  const allSelected = cart.length > 0 && selectedCount === cart.length;
+  const origSum = selectedCart.reduce((s, e) => s + e.product.orig * e.qty, 0);
+  const totalSum = selectedCart.reduce((s, e) => s + e.product.price * e.qty, 0);
   return (
     <section className="screen active" id="screen-6" data-scroll-mode="document">
       <div className="screen-body">
@@ -557,10 +569,19 @@ export function Cart({ onNav, cart, store = MAIN_STORE, onQtyChange, onPurchase 
         <div className="cart-tabs"><span>일반 배송(2)</span><span>오늘드림</span><span className="active">픽업({cart.length})</span></div>
         <div className="cart-selectbar">
           <div className="left">
-            <span className="chk"><img src="/icons/cart-check.svg" alt="" /></span>
+            <button
+              type="button"
+              className={`chk${allSelected ? ' is-selected' : ''}`}
+              aria-label={allSelected ? '전체 상품 선택 해제' : '전체 상품 선택'}
+              aria-pressed={allSelected}
+              disabled={!cart.length}
+              onClick={() => onToggleAll(!allSelected)}
+            >
+              {allSelected && <img src="/icons/cart-check.svg" alt="" />}
+            </button>
             전체 &nbsp;|&nbsp; 배송방법 변경 <span className="chevron"><img src="/icons/cart-chevron.svg" alt="" /></span>
           </div>
-          <div className="del">선택삭제</div>
+          <button type="button" className="del" disabled={!selectedCount} onClick={onDeleteSelected}>선택삭제</button>
         </div>
         <div className="cart-groupbar">
           픽업 <img className="info" src="/icons/cart-info.svg" alt="" />
@@ -571,16 +592,26 @@ export function Cart({ onNav, cart, store = MAIN_STORE, onQtyChange, onPurchase 
           <div className="chg">매장변경</div>
         </div>
         <div>
-          {cart.map((entry, idx) => (
-            <div className="cart-box" key={idx}>
-              <div className="title">
-                올클맵 픽업
-                <span className="chk"><img src="/icons/cart-check.svg" alt="" /></span>
-              </div>
+          {cart.map((entry, idx) => {
+            const isSelected = entry.selected !== false;
+            return (
+              <div className="cart-box" key={`${entry.store.id}-${entry.product.id}`}>
+                <div className="title">
+                  올클맵 픽업
+                  <button
+                    type="button"
+                    className={`chk${isSelected ? ' is-selected' : ''}`}
+                    aria-label={`${entry.product.name} ${isSelected ? '선택 해제' : '선택'}`}
+                    aria-pressed={isSelected}
+                    onClick={() => onToggleItem(idx)}
+                  >
+                    {isSelected && <img src="/icons/cart-check.svg" alt="" />}
+                  </button>
+                </div>
               <div className="row">
                 <img className="prod" src={entry.product.img} alt="" />
                 <div className="info">
-                  <div className="nm">{entry.product.name} <img src="/icons/cart-item-arrow.svg" alt="" /></div>
+                  <div className="nm">{entry.product.name}</div>
                   <div className="eta">{idx === 0 ? '6시간' : '3시간'} 내 픽업</div>
                 </div>
               </div>
@@ -596,8 +627,9 @@ export function Cart({ onNav, cart, store = MAIN_STORE, onQtyChange, onPurchase 
                   <span style={{ fontWeight: 600, fontSize: 18 }}>{won(entry.product.price * entry.qty)}</span>
                 </div>
               </div>
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
         <div className="cart-sep"></div>
         <div className="cart-sum">
@@ -607,9 +639,9 @@ export function Cart({ onNav, cart, store = MAIN_STORE, onQtyChange, onPurchase 
           <div className="note"><img src="/icons/cart-note-icon.svg" alt="" />쿠폰 적용 및 결제 수단에 따라 최종 금액이 변경될 수 있습니다.</div>
         </div>
         <div className="cart-sep" style={{ height: 2 }}></div>
-        <div className="cart-bottom"><span className="l">총 {cart.length}건 {won(totalSum)}</span><span className="r">{won(totalSum)}</span></div>
+        <div className="cart-bottom"><span className="l">총 {selectedCount}건 {won(totalSum)}</span><span className="r">{won(totalSum)}</span></div>
       </div>
-      <div className="cart-cta"><button className="btn-black" style={{ width: '100%' }} onClick={onPurchase}>픽업 구매하기</button></div>
+      <div className="cart-cta"><button className="btn-black" style={{ width: '100%' }} disabled={!selectedCount} onClick={onPurchase}>픽업 구매하기</button></div>
     </section>
   );
 }
