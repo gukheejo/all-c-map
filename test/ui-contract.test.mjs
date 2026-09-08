@@ -771,6 +771,41 @@ test('pickup flow skips 4-b and commits the selected store directly', () => {
   assert.equal(state.cart[0].product.listKey, product.listKey);
 });
 
+test('adding different pickup products keeps every cart item', () => {
+  const store = STORES[0];
+  const products = buildStoreProducts(PRODUCTS, store.stock);
+  let state = createPickupFlowState();
+  state = pickupFlowReducer(state, { type: 'OPEN_STORE', store });
+  state = pickupFlowReducer(state, { type: 'OPEN_PICKUP', product: products[0] });
+  state = pickupFlowReducer(state, { type: 'ADD_PICKUP_TO_CART' });
+  state = pickupFlowReducer(state, { type: 'OPEN_PICKUP', product: products[1] });
+  state = pickupFlowReducer(state, { type: 'ADD_PICKUP_TO_CART' });
+
+  assert.deepEqual(
+    state.cart.map((entry) => [entry.store.id, entry.product.id, entry.qty]),
+    [
+      [store.id, products[0].id, 1],
+      [store.id, products[1].id, 1],
+    ],
+  );
+});
+
+test('adding the same pickup product at the same store merges its quantity within stock', () => {
+  const store = STORES[0];
+  const product = { ...PRODUCTS[0], stock: 3 };
+  let state = createPickupFlowState();
+  state = pickupFlowReducer(state, { type: 'OPEN_STORE', store });
+  state = pickupFlowReducer(state, { type: 'OPEN_PICKUP', product });
+  state = pickupFlowReducer(state, { type: 'CHANGE_PICKUP_QTY', delta: 1 });
+  state = pickupFlowReducer(state, { type: 'ADD_PICKUP_TO_CART' });
+  state = pickupFlowReducer(state, { type: 'OPEN_PICKUP', product });
+  state = pickupFlowReducer(state, { type: 'CHANGE_PICKUP_QTY', delta: 1 });
+  state = pickupFlowReducer(state, { type: 'ADD_PICKUP_TO_CART' });
+
+  assert.equal(state.cart.length, 1);
+  assert.equal(state.cart[0].qty, 3);
+});
+
 test('pickup quantity is clamped to the remaining stock', () => {
   const product = { ...PRODUCTS[0], stock: 3 };
   let state = pickupFlowReducer(createPickupFlowState(), { type: 'OPEN_PICKUP', product });
@@ -809,6 +844,101 @@ test('cart quantity changes stay within the selected product stock', () => {
   assert.equal(state.cart[0].qty, 3);
   state = pickupFlowReducer(state, { type: 'CHANGE_CART_QTY', index: 0, delta: -99 });
   assert.equal(state.cart[0].qty, 1);
+});
+
+test('cart items can be checked and unchecked independently', () => {
+  const cart = [
+    { store: STORES[0], product: PRODUCTS[0], qty: 1, selected: true },
+    { store: STORES[0], product: PRODUCTS[1], qty: 1, selected: true },
+  ];
+  const state = pickupFlowReducer(
+    { ...createPickupFlowState(), cart },
+    { type: 'TOGGLE_CART_ITEM', index: 0 },
+  );
+
+  assert.deepEqual(state.cart.map((entry) => entry.selected), [false, true]);
+});
+
+test('the cart can select or clear every item at once', () => {
+  const cart = [
+    { store: STORES[0], product: PRODUCTS[0], qty: 1, selected: true },
+    { store: STORES[0], product: PRODUCTS[1], qty: 1, selected: false },
+  ];
+  let state = pickupFlowReducer(
+    { ...createPickupFlowState(), cart },
+    { type: 'SET_ALL_CART_SELECTED', selected: true },
+  );
+  assert.deepEqual(state.cart.map((entry) => entry.selected), [true, true]);
+
+  state = pickupFlowReducer(state, { type: 'SET_ALL_CART_SELECTED', selected: false });
+  assert.deepEqual(state.cart.map((entry) => entry.selected), [false, false]);
+});
+
+test('deleting selected cart items preserves unchecked items', () => {
+  const cart = [
+    { store: STORES[0], product: PRODUCTS[0], qty: 1, selected: false },
+    { store: STORES[0], product: PRODUCTS[1], qty: 1, selected: true },
+  ];
+  const state = pickupFlowReducer(
+    { ...createPickupFlowState(), cart },
+    { type: 'DELETE_SELECTED_CART_ITEMS' },
+  );
+
+  assert.deepEqual(state.cart.map((entry) => entry.product.id), [PRODUCTS[0].id]);
+});
+
+test('cart totals and purchase availability use selected items only', () => {
+  const cart = [
+    { store: STORES[0], product: PRODUCTS[0], qty: 1, selected: false },
+    { store: STORES[0], product: PRODUCTS[1], qty: 2, selected: true },
+  ];
+  const html = renderToStaticMarkup(React.createElement(Cart, {
+    cart,
+    store: STORES[0],
+    onNav() {},
+    onQtyChange() {},
+    onToggleItem() {},
+    onToggleAll() {},
+    onDeleteSelected() {},
+    onPurchase() {},
+  }));
+
+  assert.match(html, /aria-label="전체 상품 선택" aria-pressed="false"/);
+  assert.ok(html.includes(`aria-label="${PRODUCTS[0].name} 선택" aria-pressed="false"`));
+  assert.ok(html.includes(`aria-label="${PRODUCTS[1].name} 선택 해제" aria-pressed="true"`));
+  assert.match(html, /최종 결제금액<\/span><span>19,800원/);
+  assert.match(html, /총 1건 19,800원/);
+});
+
+test('cart purchase is disabled when every item is unchecked', () => {
+  const cart = [{ store: STORES[0], product: PRODUCTS[0], qty: 1, selected: false }];
+  const html = renderToStaticMarkup(React.createElement(Cart, {
+    cart,
+    store: STORES[0],
+    onNav() {},
+    onQtyChange() {},
+    onToggleItem() {},
+    onToggleAll() {},
+    onDeleteSelected() {},
+    onPurchase() {},
+  }));
+
+  assert.match(html, /<button[^>]*disabled=""[^>]*>픽업 구매하기<\/button>/);
+});
+
+test('cart items omit the redundant inline remove icon', () => {
+  const html = renderToStaticMarkup(React.createElement(Cart, {
+    cart: [{ store: STORES[0], product: PRODUCTS[0], qty: 1, selected: true }],
+    store: STORES[0],
+    onNav() {},
+    onQtyChange() {},
+    onToggleItem() {},
+    onToggleAll() {},
+    onDeleteSelected() {},
+    onPurchase() {},
+  }));
+
+  assert.doesNotMatch(html, /cart-item-arrow\.svg/);
 });
 
 test('pickup flow supports product navigation and a full restart', () => {
